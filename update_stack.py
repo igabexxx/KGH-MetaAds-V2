@@ -26,7 +26,11 @@ payload = {
         {"name": "WHATSAPP_TOKEN", "value": "demo-wa-token"},
         {"name": "WHATSAPP_NUMBER_ID", "value": "demo-wa-number"},
         {"name": "API_SECRET_KEY", "value": "secret12345"},
-        {"name": "WEBHOOK_VERIFY_TOKEN", "value": "kgh_webhook_verify_123"}
+        {"name": "WEBHOOK_VERIFY_TOKEN", "value": "kgh_webhook_verify_123"},
+        {"name": "SOCIALCHAT_API_KEY", "value": "MTI0NjExMzgxNl9TeWhLc2dDdUlUVGcwQTRWNEZpVg=="},
+        {"name": "SOCIALCHAT_APP_ID", "value": "1246113816"},
+        {"name": "SOCIALCHAT_SECRET_KEY", "value": "SyhKsgCuITTg0A7VNFiV"},
+        {"name": "SOCIALCHAT_BASE_URL", "value": "https://api.socialchat.example.com"}
     ]
 }
 
