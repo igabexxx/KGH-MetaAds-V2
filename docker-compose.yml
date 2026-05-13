@@ -157,13 +157,15 @@ services:
       - kgh_network
 
   # ─────────────────────────────────────────────────────────
-  # Cloudflare Tunnel (Quick Tunnel)
+  # Cloudflare Tunnel (Persistent)
   # ─────────────────────────────────────────────────────────
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: kgh_cloudflared
     restart: unless-stopped
-    command: tunnel --url http://backend:8000
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
     networks:
       - kgh_network
     depends_on:
