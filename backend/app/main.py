@@ -93,7 +93,7 @@ async def api_status():
 frontend_path = "/app/frontend"
 
 if os.path.isdir(frontend_path):
-    app.mount("/assets", StaticFiles(directory=f"{frontend_path}/assets"), name="assets")
+    # app.mount("/assets", StaticFiles(directory=f"{frontend_path}/assets"), name="assets")
     app.mount("/css", StaticFiles(directory=f"{frontend_path}/css"), name="css")
     app.mount("/js", StaticFiles(directory=f"{frontend_path}/js"), name="js")
 
