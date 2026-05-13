@@ -97,7 +97,7 @@ services:
     depends_on:
       - postgres
     volumes:
-      - n8n_data:/home/node/.n8n
+      - n8n_data_v2:/home/node/.n8n
       - ./n8n/workflows:/home/node/workflows:ro
     networks:
       - kgh_network
@@ -160,7 +160,7 @@ services:
 volumes:
   pgdata_v2:
     driver: local
-  n8n_data:
+  n8n_data_v2:
     driver: local
   ollama_data:
     driver: local
