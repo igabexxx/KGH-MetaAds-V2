@@ -63,9 +63,9 @@ async def log_requests(request: Request, call_next):
 
 
 # ─── Routers ──────────────────────────────────────────────
-app.include_router(campaigns.router, prefix="/api/v1/campaigns", tags=["Campaigns"])
-app.include_router(leads.router, prefix="/api/v1/leads", tags=["Leads"])
-app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["Analytics"])
+app.include_router(campaigns.router)
+app.include_router(leads.router)
+app.include_router(analytics.router)
 app.include_router(socialchat.router, prefix="/api/v1/socialchat", tags=["SocialChat"])
 
 
