@@ -108,9 +108,14 @@ services:
   # OpenClaw AI Agent
   # ─────────────────────────────────────────────────────────
   openclaw:
-    image: openclaw/openclaw:latest
+    image: python:3.11-slim
     container_name: kgh_openclaw
+    command: >
+      bash -c "echo 'OpenClaw container placeholder running' && sleep infinity"
     restart: unless-stopped
+    volumes:
+      - ./openclaw:/app/openclaw
+    working_dir: /app/openclaw
     environment:
       OPENCLAW_MODEL_PROVIDER: ${LLM_PROVIDER:-openai}
       OPENCLAW_MODEL_NAME: ${LLM_MODEL:-gpt-4o}
