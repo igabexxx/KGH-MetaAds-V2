@@ -226,6 +226,8 @@ async def receive_ai_scoring(request: Request, db: Session = Depends(get_db)):
                     # Update existing lead with AI scoring
                     lead.score = score
                     lead.status = temp
+                    lead.score_label = temp
+                    lead.score_reason = item.get("reasons", "AI Scored")
                     lead.assigned_to = agent if agent != "Unassigned" else lead.assigned_to
                     lead.notes = notes
                     # Merge AI data into existing custom_fields
