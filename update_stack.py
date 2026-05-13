@@ -27,10 +27,10 @@ payload = {
         {"name": "WHATSAPP_NUMBER_ID", "value": "demo-wa-number"},
         {"name": "API_SECRET_KEY", "value": "secret12345"},
         {"name": "WEBHOOK_VERIFY_TOKEN", "value": "kgh_webhook_verify_123"},
-        {"name": "SOCIALCHAT_API_KEY", "value": "MTI0NjExMzgxNl9TeWhLc2dDdUlUVGcwQTRWNEZpVg=="},
+        {"name": "SOCIALCHAT_API_KEY", "value": "MTI0NjExMzgxNl9TeWhLc2dDdUlUVGcwQTdWTkZpVg=="},
         {"name": "SOCIALCHAT_APP_ID", "value": "1246113816"},
         {"name": "SOCIALCHAT_SECRET_KEY", "value": "SyhKsgCuITTg0A7VNFiV"},
-        {"name": "SOCIALCHAT_BASE_URL", "value": "https://api.socialchat.example.com"},
+        {"name": "SOCIALCHAT_BASE_URL", "value": "https://api.socialchat.id/partner"},
         {"name": "CLOUDFLARE_TUNNEL_TOKEN", "value": "eyJhIjoiZDNmZDViZGVlZTRlYzY2NjVmYTQwYWM1MjFhOTc1MGUiLCJ0IjoiMThiYTYwMDMtZmUzNi00YmRlLTgyNDEtMzBhNjgyMjExOWYwIiwicyI6Ik5tSTNabVF5T0RBdE56WTNNeTAwT1RKaUxUZzROR010TjJZd1pETmlNbVV5TlRjeiJ9"}
     ]
 }
