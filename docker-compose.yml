@@ -62,8 +62,7 @@ services:
     ports:
       - "8005:8000"
     depends_on:
-      postgres:
-        condition: service_healthy
+      - postgres
     volumes:
       - ./frontend:/app/frontend:ro
     networks:
@@ -96,8 +95,7 @@ services:
     ports:
       - "5680:5678"
     depends_on:
-      postgres:
-        condition: service_healthy
+      - postgres
     volumes:
       - n8n_data:/home/node/.n8n
       - ./n8n/workflows:/home/node/workflows:ro
