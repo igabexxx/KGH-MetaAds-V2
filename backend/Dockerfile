@@ -21,8 +21,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ ./app/
 COPY sql/ ./sql/
 
-# Create frontend volume mount point
-RUN mkdir -p /app/frontend
+# Copy frontend code
+COPY frontend/ ./frontend/
 
 # Environment
 ENV PYTHONPATH=/app
