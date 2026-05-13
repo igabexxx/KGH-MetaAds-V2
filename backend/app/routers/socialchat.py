@@ -77,39 +77,41 @@ async def receive_webhook(request: Request, background_tasks: BackgroundTasks, d
         # Ensure phone format (basic)
         phone_number = str(phone_number).replace("+", "").replace("-", "").replace(" ", "")
         
-        # --- PROCESS LEAD ---
+        from sqlalchemy import select
         # 1. Check if lead exists
-        lead = db.query(Lead).filter(Lead.phone_number == phone_number).first()
+        result = await db.execute(select(Lead).filter(Lead.phone == phone_number))
+        lead = result.scalars().first()
         
         if not lead:
             # Create new lead from SocialChat
             lead = Lead(
                 full_name=contact_name,
-                phone_number=phone_number,
+                phone=phone_number,
                 source="WhatsApp (SocialChat)",
                 status="NEW",
                 # Give a default score, can be adjusted by OpenClaw later
-                ai_score=50,
-                meta_data={"socialchat_raw": payload}
+                score=50,
+                custom_fields={"socialchat_raw": payload}
             )
             db.add(lead)
-            db.commit()
-            db.refresh(lead)
+            await db.commit()
+            await db.refresh(lead)
             logger.info(f"Created new lead from SocialChat: {lead.id}")
             
         # 2. Record Activity
         activity = LeadActivity(
             lead_id=lead.id,
-            activity_type="WhatsApp Message",
-            details={"message": message_text, "direction": "inbound"},
-            ai_sentiment_score=None # To be processed by OpenClaw
+            action_type="MESSAGE_RECEIVED",
+            description=f"Received WhatsApp Message via SocialChat",
+            performed_by="system",
+            meta_data={"message": message_text, "direction": "inbound"}
         )
         db.add(activity)
         
         # 3. Update Lead timestamp
         lead.updated_at = datetime.utcnow()
         
-        db.commit()
+        await db.commit()
         
         return {"status": "success", "lead_id": lead.id}
 
