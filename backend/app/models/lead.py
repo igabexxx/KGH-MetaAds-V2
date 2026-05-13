@@ -80,7 +80,7 @@ class LeadActivity(Base):
     action_type     = Column(String(50), nullable=False)
     description     = Column(Text)
     performed_by    = Column(String(100), default="system")
-    metadata        = Column(JSONB, default=dict)
+    meta_data       = Column("metadata", JSONB, default=dict)
     timestamp       = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     # Relationships
@@ -130,5 +130,5 @@ class Notification(Base):
     type        = Column(String(30), default="INFO")
     channel     = Column(String(30))
     is_read     = Column(Boolean, default=False, index=True)
-    metadata    = Column(JSONB, default=dict)
+    meta_data   = Column("metadata", JSONB, default=dict)
     created_at  = Column(TIMESTAMP(timezone=True), server_default=func.now())
