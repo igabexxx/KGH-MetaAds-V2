@@ -40,8 +40,8 @@ services:
   # ─────────────────────────────────────────────────────────
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: kgh_backend_v2
     restart: unless-stopped
     environment:
