@@ -1,0 +1,196 @@
+{
+  "name": "01 — Lead Capture (Meta Lead Ads → DB → Notify)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meta-lead-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "n_webhook_trigger",
+      "name": "🔔 Meta Lead Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "meta-lead-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate & extract lead data from Meta webhook payload\nconst body = $input.first().json;\n\n// Handle Meta webhook verification (GET)\nif (body.hub && body['hub.mode'] === 'subscribe') {\n  return [{ json: { challenge: body['hub.challenge'], type: 'verification' } }];\n}\n\n// Extract lead entries\nconst entries = [];\nfor (const entry of body.entry || []) {\n  for (const change of entry.changes || []) {\n    if (change.field === 'leadgen') {\n      entries.push({\n        leadgen_id: change.value.leadgen_id,\n        form_id: change.value.form_id,\n        ad_id: change.value.ad_id,\n        page_id: change.value.page_id,\n        created_time: change.value.created_time,\n        raw: change.value\n      });\n    }\n  }\n}\n\nif (entries.length === 0) {\n  return [{ json: { status: 'no_leads', message: 'No leadgen events found' } }];\n}\n\nreturn entries.map(e => ({ json: e }));"
+      },
+      "id": "n_extract_leads",
+      "name": "📋 Extract Lead Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/{{ $env.META_API_VERSION }}/{{ $json.leadgen_id }}",
+        "authentication": "none",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "access_token",
+              "value": "={{ $env.META_ACCESS_TOKEN }}"
+            },
+            {
+              "name": "fields",
+              "value": "field_data,created_time,ad_id,form_id,campaign_id"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "n_fetch_full_lead",
+      "name": "🌐 Fetch Full Lead from Graph API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Transform Meta Graph API response to normalized lead object\nconst data = $input.first().json;\n\n// Parse field_data array into named fields\nconst fields = {};\nfor (const field of data.field_data || []) {\n  const key = field.name.toLowerCase().replace(/[^a-z0-9_]/g, '_');\n  fields[key] = field.values?.[0] || '';\n}\n\n// Extract standard fields\nconst full_name = fields.full_name || fields.name || '';\nconst email = fields.email || '';\nconst phone = fields.phone_number || fields.phone || '';\n\n// Remove standard fields from custom_fields\nconst { full_name: _fn, name: _n, email: _e, phone_number: _ph, phone: _p, ...custom_fields } = fields;\n\nreturn [{\n  json: {\n    meta_lead_id: String(data.id),\n    full_name: full_name.trim(),\n    email: email.toLowerCase().trim(),\n    phone: phone.replace(/[^0-9+]/g, ''),\n    custom_fields,\n    source: 'META_LEAD_ADS',\n    utm_campaign: String(data.campaign_id || ''),\n  }\n}];"
+      },
+      "id": "n_normalize_lead",
+      "name": "⚙️ Normalize Lead Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "url": "=http://backend:8000/api/leads/ingest",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "n_store_lead",
+      "name": "💾 Store Lead in Database",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "rules": [
+            {
+              "value1": "={{ $json.score_label }}",
+              "value2": "HOT",
+              "operation": "equal"
+            }
+          ]
+        }
+      },
+      "id": "n_score_switch",
+      "name": "🔀 Route by Lead Score",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "url": "=http://n8n:5678/webhook/notification",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"channel\": \"telegram\",\n  \"type\": \"HOT_LEAD\",\n  \"title\": \"🔥 Lead PANAS Masuk!\",\n  \"message\": \"Nama: {{ $json.full_name }}\\nHP: {{ $json.phone }}\\nScore: {{ $json.score }} (HOT)\\nSumber: Meta Lead Ads\"\n}",
+        "options": {}
+      },
+      "id": "n_notify_hot",
+      "name": "📨 Notify HOT Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 180]
+    },
+    {
+      "parameters": {
+        "url": "=http://n8n:5678/webhook/notification",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"channel\": \"telegram\",\n  \"type\": \"NEW_LEAD\",\n  \"title\": \"📋 Lead Baru\",\n  \"message\": \"Nama: {{ $json.full_name }}\\nHP: {{ $json.phone }}\\nScore: {{ $json.score }} ({{ $json.score_label }})\"\n}",
+        "options": {}
+      },
+      "id": "n_notify_standard",
+      "name": "📨 Notify Standard Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 420]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"ok\", \"lead_id\": {{ $('💾 Store Lead in Database').first().json.id }} }"
+      },
+      "id": "n_respond",
+      "name": "✅ Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1340, 540]
+    }
+  ],
+  "connections": {
+    "🔔 Meta Lead Webhook": {
+      "main": [[{ "node": "📋 Extract Lead Data", "type": "main", "index": 0 }]]
+    },
+    "📋 Extract Lead Data": {
+      "main": [[{ "node": "🌐 Fetch Full Lead from Graph API", "type": "main", "index": 0 }]]
+    },
+    "🌐 Fetch Full Lead from Graph API": {
+      "main": [[{ "node": "⚙️ Normalize Lead Data", "type": "main", "index": 0 }]]
+    },
+    "⚙️ Normalize Lead Data": {
+      "main": [[{ "node": "💾 Store Lead in Database", "type": "main", "index": 0 }]]
+    },
+    "💾 Store Lead in Database": {
+      "main": [
+        [{ "node": "🔀 Route by Lead Score", "type": "main", "index": 0 }],
+        [{ "node": "✅ Respond OK", "type": "main", "index": 0 }]
+      ]
+    },
+    "🔀 Route by Lead Score": {
+      "main": [
+        [{ "node": "📨 Notify HOT Lead", "type": "main", "index": 0 }],
+        [{ "node": "📨 Notify Standard Lead", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "timezone": "Asia/Jakarta"
+  },
+  "tags": ["kgh-meta-ads", "leads", "webhook"]
+}

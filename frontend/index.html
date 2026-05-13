@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KGH Meta Ads — Dashboard</title>
+  <meta name="description" content="Sistem otomasi Meta Ads dan manajemen leads untuk Kayana Green Hills" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     APP SHELL
+═══════════════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <path d="M14 2L26 8V20L14 26L2 20V8L14 2Z" fill="url(#logo-grad)" />
+          <path d="M14 8L20 11V17L14 20L8 17V11L14 8Z" fill="rgba(255,255,255,0.3)" />
+          <defs>
+            <linearGradient id="logo-grad" x1="2" y1="2" x2="26" y2="26" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#667eea" />
+              <stop offset="1" stop-color="#764ba2" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <span class="logo-title">KGH Ads</span>
+        <span class="logo-sub">Meta Automation</span>
+      </div>
+      <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar">
+        <i data-lucide="panel-left-close" size="16"></i>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Menu Utama</div>
+      <a href="#dashboard" class="nav-item active" data-page="dashboard" id="nav-dashboard">
+        <i data-lucide="layout-dashboard" size="18"></i>
+        <span>Dashboard</span>
+      </a>
+      <a href="#campaigns" class="nav-item" data-page="campaigns" id="nav-campaigns">
+        <i data-lucide="megaphone" size="18"></i>
+        <span>Campaigns</span>
+        <span class="nav-badge" id="badge-campaigns">—</span>
+      </a>
+      <a href="#leads" class="nav-item" data-page="leads" id="nav-leads">
+        <i data-lucide="users" size="18"></i>
+        <span>Leads</span>
+        <span class="nav-badge hot" id="badge-leads-hot">—</span>
+      </a>
+      <a href="#analytics" class="nav-item" data-page="analytics" id="nav-analytics">
+        <i data-lucide="bar-chart-3" size="18"></i>
+        <span>Analytics</span>
+      </a>
+
+      <div class="nav-section-label" style="margin-top:1rem;">Otomasi</div>
+      <a href="#automation" class="nav-item" data-page="automation" id="nav-automation">
+        <i data-lucide="zap" size="18"></i>
+        <span>Automation</span>
+      </a>
+      <a href="#settings" class="nav-item" data-page="settings" id="nav-settings">
+        <i data-lucide="settings" size="18"></i>
+        <span>Settings</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-status">
+      <div class="status-item">
+        <div class="status-dot" id="dot-api"></div>
+        <span id="label-api">API Checking...</span>
+      </div>
+      <div class="status-item">
+        <div class="status-dot" id="dot-meta"></div>
+        <span id="label-meta">Meta API</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main id="main-content" class="main-content">
+
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button id="mobile-toggle" class="mobile-toggle">
+          <i data-lucide="menu" size="20"></i>
+        </button>
+        <div class="topbar-breadcrumb">
+          <span id="page-title">Dashboard</span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="date-range-picker">
+          <i data-lucide="calendar" size="14"></i>
+          <select id="date-range" class="date-select">
+            <option value="7">7 Hari Terakhir</option>
+            <option value="30" selected>30 Hari Terakhir</option>
+            <option value="90">90 Hari Terakhir</option>
+          </select>
+        </div>
+        <button class="btn-icon" id="btn-refresh" title="Refresh data">
+          <i data-lucide="refresh-cw" size="16"></i>
+        </button>
+        <div class="notification-bell" id="notification-bell">
+          <i data-lucide="bell" size="18"></i>
+          <span class="notif-count" id="notif-count" style="display:none">0</span>
+        </div>
+        <div class="user-avatar" title="KGH Ads System">KG</div>
+      </div>
+    </header>
+
+    <!-- ─── PAGE: DASHBOARD ─── -->
+    <section class="page active" id="page-dashboard">
+      <div class="page-header">
+        <h1 class="page-heading">Overview</h1>
+        <p class="page-subheading">Performa Meta Ads Kayana Green Hills — <span id="dash-date-range">30 hari terakhir</span></p>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card" id="kpi-spend">
+          <div class="kpi-icon spend"><i data-lucide="credit-card" size="20"></i></div>
+          <div class="kpi-body">
+            <div class="kpi-label">Total Spend</div>
+            <div class="kpi-value" data-counter>Rp 0</div>
+            <div class="kpi-trend" id="trend-spend"></div>
+          </div>
+        </div>
+        <div class="kpi-card" id="kpi-leads">
+          <div class="kpi-icon leads"><i data-lucide="users" size="20"></i></div>
+          <div class="kpi-body">
+            <div class="kpi-label">Total Leads</div>
+            <div class="kpi-value" data-counter>0</div>
+            <div class="kpi-trend" id="trend-leads"></div>
+          </div>
+        </div>
+        <div class="kpi-card" id="kpi-cpl">
+          <div class="kpi-icon cpl"><i data-lucide="target" size="20"></i></div>
+          <div class="kpi-body">
+            <div class="kpi-label">Cost per Lead</div>
+            <div class="kpi-value" data-counter>Rp 0</div>
+            <div class="kpi-sub" id="cpl-target"></div>
+          </div>
+        </div>
+        <div class="kpi-card" id="kpi-ctr">
+          <div class="kpi-icon ctr"><i data-lucide="mouse-pointer-click" size="20"></i></div>
+          <div class="kpi-body">
+            <div class="kpi-label">Avg CTR</div>
+            <div class="kpi-value" data-counter>0%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lead Score Pills -->
+      <div class="score-pills">
+        <div class="score-pill hot">
+          <span class="pill-dot"></span>
+          <span class="pill-label">HOT</span>
+          <span class="pill-count" id="pill-hot">—</span>
+        </div>
+        <div class="score-pill warm">
+          <span class="pill-dot"></span>
+          <span class="pill-label">WARM</span>
+          <span class="pill-count" id="pill-warm">—</span>
+        </div>
+        <div class="score-pill cold">
+          <span class="pill-dot"></span>
+          <span class="pill-label">COLD</span>
+          <span class="pill-count" id="pill-cold">—</span>
+        </div>
+        <div class="score-pill active-camp">
+          <span class="pill-dot"></span>
+          <span class="pill-label">Campaign Aktif</span>
+          <span class="pill-count" id="pill-campaigns">—</span>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="charts-grid">
+        <div class="chart-card wide">
+          <div class="chart-header">
+            <h3 class="chart-title">Trend Spend & Leads</h3>
+            <div class="chart-legend">
+              <span class="legend-dot spend"></span><span>Spend</span>
+              <span class="legend-dot leads" style="margin-left:1rem"></span><span>Leads</span>
+            </div>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="chart-trend"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Lead Pipeline</h3>
+          </div>
+          <div class="chart-wrapper" style="max-height:200px">
+            <canvas id="chart-funnel"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Leads -->
+      <div class="section-card">
+        <div class="section-header">
+          <h3 class="section-title">Lead Terbaru</h3>
+          <a href="#leads" class="link-btn" data-nav="leads">Lihat Semua →</a>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table" id="table-recent-leads">
+            <thead>
+              <tr>
+                <th>Nama</th>
+                <th>HP</th>
+                <th>Score</th>
+                <th>Status</th>
+                <th>Waktu</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-recent-leads">
+              <tr><td colspan="5" class="loading-row"><span class="spinner"></span> Memuat data...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── PAGE: CAMPAIGNS ─── -->
+    <section class="page" id="page-campaigns">
+      <div class="page-header">
+        <h1 class="page-heading">Campaigns</h1>
+        <p class="page-subheading">Manajemen kampanye Meta Ads</p>
+      </div>
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <div class="filter-group">
+            <button class="filter-btn active" data-filter="ALL">Semua</button>
+            <button class="filter-btn" data-filter="ACTIVE">Aktif</button>
+            <button class="filter-btn" data-filter="PAUSED">Paused</button>
+          </div>
+        </div>
+        <div class="toolbar-right">
+          <button class="btn btn-secondary" id="btn-sync-campaigns">
+            <i data-lucide="refresh-cw" size="14"></i> Sync Meta
+          </button>
+        </div>
+      </div>
+      <div class="section-card" style="padding:0">
+        <div class="table-wrapper">
+          <table class="data-table" id="table-campaigns">
+            <thead>
+              <tr>
+                <th>Campaign</th>
+                <th>Status</th>
+                <th>Budget Harian</th>
+                <th>Spend</th>
+                <th>Impressions</th>
+                <th>CTR</th>
+                <th>Leads</th>
+                <th>CPL</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-campaigns">
+              <tr><td colspan="9" class="loading-row"><span class="spinner"></span> Memuat data...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── PAGE: LEADS ─── -->
+    <section class="page" id="page-leads">
+      <div class="page-header">
+        <h1 class="page-heading">Lead Management</h1>
+        <p class="page-subheading">Kelola dan tindaklanjuti semua leads</p>
+      </div>
+
+      <!-- Lead Stats Bar -->
+      <div class="lead-stats-bar" id="lead-stats-bar">
+        <div class="lstat"><span id="lstat-total">—</span><label>Total</label></div>
+        <div class="lstat"><span id="lstat-new">—</span><label>Baru</label></div>
+        <div class="lstat"><span id="lstat-contacted">—</span><label>Dihubungi</label></div>
+        <div class="lstat"><span id="lstat-qualified">—</span><label>Qualified</label></div>
+        <div class="lstat hot-stat"><span id="lstat-hot">—</span><label>🔥 HOT</label></div>
+        <div class="lstat warm-stat"><span id="lstat-warm">—</span><label>🌡️ WARM</label></div>
+      </div>
+
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <div class="search-box">
+            <i data-lucide="search" size="14"></i>
+            <input type="text" id="lead-search" placeholder="Cari nama, HP, email..." />
+          </div>
+          <select id="lead-status-filter" class="filter-select">
+            <option value="">Semua Status</option>
+            <option value="NEW">Baru</option>
+            <option value="CONTACTED">Dihubungi</option>
+            <option value="QUALIFIED">Qualified</option>
+            <option value="PROPOSAL">Proposal</option>
+            <option value="WON">Won ✓</option>
+            <option value="LOST">Lost ✗</option>
+          </select>
+          <select id="lead-score-filter" class="filter-select">
+            <option value="">Semua Score</option>
+            <option value="HOT">🔥 HOT</option>
+            <option value="WARM">🌡️ WARM</option>
+            <option value="COLD">❄️ COLD</option>
+          </select>
+        </div>
+        <div class="toolbar-right">
+          <button class="btn btn-primary" id="btn-add-lead">
+            <i data-lucide="plus" size="14"></i> Tambah Lead
+          </button>
+        </div>
+      </div>
+
+      <div class="section-card" style="padding:0">
+        <div class="table-wrapper">
+          <table class="data-table" id="table-leads">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Nama</th>
+                <th>Kontak</th>
+                <th>Score</th>
+                <th>Status</th>
+                <th>Assigned</th>
+                <th>Tanggal</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-leads">
+              <tr><td colspan="8" class="loading-row"><span class="spinner"></span> Memuat data...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="leads-pagination"></div>
+      </div>
+    </section>
+
+    <!-- ─── PAGE: ANALYTICS ─── -->
+    <section class="page" id="page-analytics">
+      <div class="page-header">
+        <h1 class="page-heading">Analytics</h1>
+        <p class="page-subheading">Laporan dan analisis performa</p>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card wide">
+          <div class="chart-header">
+            <h3 class="chart-title">Spend Harian</h3>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="chart-spend-daily"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">CTR Trend</h3>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="chart-ctr"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Lead Funnel</h3>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="chart-funnel-analytics"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-header">
+          <h3 class="section-title">Perbandingan Campaign</h3>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table" id="table-compare">
+            <thead>
+              <tr>
+                <th>Campaign</th>
+                <th>Spend</th>
+                <th>Impressions</th>
+                <th>Clicks</th>
+                <th>CTR</th>
+                <th>Leads</th>
+                <th>CPL</th>
+                <th>ROAS</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-compare">
+              <tr><td colspan="8" class="loading-row"><span class="spinner"></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── PAGE: AUTOMATION ─── -->
+    <section class="page" id="page-automation">
+      <div class="page-header">
+        <h1 class="page-heading">Automation Rules</h1>
+        <p class="page-subheading">Aturan otomasi campaign berbasis metrik</p>
+      </div>
+      <div id="automation-rules-list" class="rules-grid">
+        <div class="loading-state"><span class="spinner"></span> Memuat rules...</div>
+      </div>
+    </section>
+
+    <!-- ─── PAGE: SETTINGS ─── -->
+    <section class="page" id="page-settings">
+      <div class="page-header">
+        <h1 class="page-heading">Settings</h1>
+        <p class="page-subheading">Konfigurasi sistem dan integrasi</p>
+      </div>
+      <div class="settings-grid">
+        <div class="settings-card">
+          <h3 class="settings-title"><i data-lucide="link" size="16"></i> API Status</h3>
+          <div id="api-status-panel" class="status-panel">
+            <div class="status-row"><span>Backend API</span><span class="status-badge" id="s-backend">Checking...</span></div>
+            <div class="status-row"><span>N8N Workflows</span><span class="status-badge" id="s-n8n">Checking...</span></div>
+            <div class="status-row"><span>Meta API</span><span class="status-badge" id="s-meta">Checking...</span></div>
+            <div class="status-row"><span>Database</span><span class="status-badge" id="s-db">Checking...</span></div>
+          </div>
+        </div>
+        <div class="settings-card">
+          <h3 class="settings-title"><i data-lucide="server" size="16"></i> System Info</h3>
+          <div class="info-panel">
+            <div class="info-row"><span>LLM Provider</span><strong id="info-llm">—</strong></div>
+            <div class="info-row"><span>LLM Model</span><strong id="info-model">—</strong></div>
+            <div class="info-row"><span>Messaging</span><strong id="info-msg">—</strong></div>
+            <div class="info-row"><span>N8N URL</span><strong id="info-n8n">—</strong></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+</div>
+
+<!-- ═══ LEAD DETAIL MODAL ═══ -->
+<div id="modal-lead" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="modal-lead-title">Detail Lead</h3>
+      <button class="modal-close" id="modal-lead-close"><i data-lucide="x" size="18"></i></button>
+    </div>
+    <div class="modal-body" id="modal-lead-body">Loading...</div>
+  </div>
+</div>
+
+<!-- ═══ TOAST NOTIFICATIONS ═══ -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- ═══ SCRIPTS ═══ -->
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/campaigns.js"></script>
+<script src="js/leads.js"></script>
+<script src="js/analytics.js"></script>
+
+<script>
+  // Initialize Lucide icons
+  lucide.createIcons();
+</script>
+</body>
+</html>

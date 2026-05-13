@@ -1,0 +1,117 @@
+{
+  "name": "02 — Data Sync (Meta API → PostgreSQL)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "minutes", "minutesInterval": 15 }] }
+      },
+      "id": "n_schedule",
+      "name": "⏰ Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/{{ $env.META_API_VERSION }}/{{ $env.META_AD_ACCOUNT_ID }}/campaigns",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "access_token", "value": "={{ $env.META_ACCESS_TOKEN }}" },
+            { "name": "fields", "value": "id,name,objective,status,buying_type,daily_budget,lifetime_budget,start_time,stop_time" },
+            { "name": "limit", "value": "100" }
+          ]
+        },
+        "options": { "timeout": 30000 }
+      },
+      "id": "n_fetch_campaigns",
+      "name": "🌐 Fetch Campaigns",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst campaigns = data.data || [];\nreturn campaigns.map(c => ({\n  json: {\n    meta_id: c.id,\n    name: c.name,\n    objective: c.objective || null,\n    status: c.status,\n    buying_type: c.buying_type || null,\n    daily_budget: c.daily_budget ? parseFloat(c.daily_budget) / 100 : null,\n    lifetime_budget: c.lifetime_budget ? parseFloat(c.lifetime_budget) / 100 : null,\n    start_date: c.start_time ? c.start_time.split('T')[0] : null,\n    end_date: c.stop_time ? c.stop_time.split('T')[0] : null\n  }\n}));"
+      },
+      "id": "n_transform_campaigns",
+      "name": "⚙️ Transform Campaigns",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO campaigns (meta_id, name, objective, status, buying_type, daily_budget, lifetime_budget, start_date, end_date)\nVALUES ($1, $2, $3, $4, $5, $6, $7, $8::date, $9::date)\nON CONFLICT (meta_id) DO UPDATE SET\n  name=EXCLUDED.name, status=EXCLUDED.status,\n  daily_budget=EXCLUDED.daily_budget, updated_at=NOW()",
+        "additionalFields": {
+          "queryParams": "={{ [$json.meta_id,$json.name,$json.objective,$json.status,$json.buying_type,$json.daily_budget,$json.lifetime_budget,$json.start_date,$json.end_date] }}"
+        },
+        "options": {}
+      },
+      "id": "n_upsert_campaigns",
+      "name": "💾 UPSERT Campaigns",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [900, 300],
+      "credentials": { "postgres": { "id": "pg_main", "name": "KGH PostgreSQL" } }
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/{{ $env.META_API_VERSION }}/{{ $env.META_AD_ACCOUNT_ID }}/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "access_token", "value": "={{ $env.META_ACCESS_TOKEN }}" },
+            { "name": "fields", "value": "campaign_id,impressions,clicks,spend,reach,ctr,cpc,cpm,actions,cost_per_action_type" },
+            { "name": "date_preset", "value": "today" },
+            { "name": "level", "value": "campaign" },
+            { "name": "limit", "value": "100" }
+          ]
+        },
+        "options": { "timeout": 30000 }
+      },
+      "id": "n_fetch_insights",
+      "name": "🌐 Fetch Insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst insights = data.data || [];\nconst today = new Date().toISOString().split('T')[0];\nreturn insights.map(row => {\n  const leadAction = (row.actions || []).find(a => a.action_type === 'lead');\n  const leadCpa = (row.cost_per_action_type || []).find(a => a.action_type === 'lead');\n  return { json: {\n    campaign_meta_id: row.campaign_id, date: today,\n    impressions: parseInt(row.impressions || 0),\n    clicks: parseInt(row.clicks || 0),\n    spend: parseFloat(row.spend || 0),\n    reach: parseInt(row.reach || 0),\n    ctr: parseFloat(row.ctr || 0),\n    cpc: parseFloat(row.cpc || 0),\n    cpm: parseFloat(row.cpm || 0),\n    conversions: leadAction ? parseInt(leadAction.value) : 0,\n    cost_per_result: leadCpa ? parseFloat(leadCpa.value) : 0\n  }};\n});"
+      },
+      "id": "n_transform_insights",
+      "name": "⚙️ Transform Insights",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO campaign_metrics (campaign_id, date, impressions, clicks, spend, reach, ctr, cpc, cpm, conversions, cost_per_result)\nSELECT c.id, $1::date, $2, $3, $4, $5, $6, $7, $8, $9, $10\nFROM campaigns c WHERE c.meta_id = $11\nON CONFLICT (campaign_id, date) DO UPDATE SET\n  impressions=EXCLUDED.impressions, clicks=EXCLUDED.clicks,\n  spend=EXCLUDED.spend, ctr=EXCLUDED.ctr, cpc=EXCLUDED.cpc,\n  conversions=EXCLUDED.conversions, cost_per_result=EXCLUDED.cost_per_result",
+        "additionalFields": {
+          "queryParams": "={{ [$json.date,$json.impressions,$json.clicks,$json.spend,$json.reach,$json.ctr,$json.cpc,$json.cpm,$json.conversions,$json.cost_per_result,$json.campaign_meta_id] }}"
+        },
+        "options": {}
+      },
+      "id": "n_upsert_metrics",
+      "name": "💾 UPSERT Metrics",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1560, 300],
+      "credentials": { "postgres": { "id": "pg_main", "name": "KGH PostgreSQL" } }
+    }
+  ],
+  "connections": {
+    "⏰ Every 15 Minutes": { "main": [[{ "node": "🌐 Fetch Campaigns", "type": "main", "index": 0 }]] },
+    "🌐 Fetch Campaigns": { "main": [[{ "node": "⚙️ Transform Campaigns", "type": "main", "index": 0 }]] },
+    "⚙️ Transform Campaigns": { "main": [[{ "node": "💾 UPSERT Campaigns", "type": "main", "index": 0 }]] },
+    "💾 UPSERT Campaigns": { "main": [[{ "node": "🌐 Fetch Insights", "type": "main", "index": 0 }]] },
+    "🌐 Fetch Insights": { "main": [[{ "node": "⚙️ Transform Insights", "type": "main", "index": 0 }]] },
+    "⚙️ Transform Insights": { "main": [[{ "node": "💾 UPSERT Metrics", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "Asia/Jakarta" },
+  "tags": ["kgh-meta-ads", "sync"]
+}

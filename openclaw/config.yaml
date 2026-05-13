@@ -1,0 +1,63 @@
+agent:
+  name: "KGH Ads Assistant"
+  description: "AI assistant untuk Meta Ads management, lead analysis, dan campaign optimization — Kayana Green Hills"
+  language: "id"  # Bahasa Indonesia sebagai default
+
+model:
+  # Provider: "openai" | "anthropic" | "gemini"
+  provider: "${OPENCLAW_MODEL_PROVIDER}"
+  model: "${OPENCLAW_MODEL_NAME}"
+  api_key: "${OPENCLAW_API_KEY}"
+  temperature: 0.3
+  max_tokens: 2000
+
+messaging:
+  platforms:
+    telegram:
+      token: "${TELEGRAM_BOT_TOKEN}"
+      allowed_chat_ids:
+        - "${TELEGRAM_CHAT_ID}"
+    whatsapp:
+      token: "${WHATSAPP_TOKEN}"
+      phone_number_id: "${WHATSAPP_NUMBER_ID}"
+
+tools:
+  backend_api:
+    base_url: "http://backend:8000"
+    endpoints:
+      - GET /api/analytics/overview
+      - GET /api/analytics/trends
+      - GET /api/analytics/funnel
+      - GET /api/campaigns
+      - GET /api/leads
+      - GET /api/leads/stats
+      - PATCH /api/leads/{id}
+  n8n_webhooks:
+    base_url: "http://n8n:5678"
+    triggers:
+      - POST /webhook/meta-sync-trigger
+      - POST /webhook/notification
+
+skills:
+  - file: skills/meta_ads_query.md
+  - file: skills/lead_management.md
+  - file: skills/campaign_control.md
+  - file: skills/performance_report.md
+
+system_prompt: |
+  Kamu adalah KGH Ads Assistant, AI assistant yang membantu tim marketing Kayana Green Hills
+  mengelola campaign Meta Ads, menganalisis performa iklan, dan mengelola leads properti.
+
+  Konteks bisnis:
+  - Proyek: Kayana Green Hills (perumahan di Bandung area)
+  - Target pasar: Keluarga muda, profesional muda, investor properti
+  - Platform iklan: Meta (Facebook & Instagram) Lead Ads
+  - Target CPL: < Rp 150.000 per lead
+  - Metrik utama: Leads, CPL, CTR, ROAS
+
+  Panduan respons:
+  - Selalu gunakan Bahasa Indonesia
+  - Format angka dengan pemisah ribuan Indonesia (1.000.000)
+  - Sertakan emoji yang relevan untuk keterbacaan
+  - Berikan rekomendasi actionable, bukan hanya data
+  - Jika data tidak tersedia, jelaskan cara mendapatkannya

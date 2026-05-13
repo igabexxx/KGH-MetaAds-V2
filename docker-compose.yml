@@ -1,0 +1,174 @@
+version: '3.8'
+
+# =============================================================
+# KGH META ADS — DOCKER COMPOSE STACK
+# =============================================================
+# Usage:
+#   Standard:     docker compose up -d
+#   With Ollama:  docker compose --profile local-llm up -d
+# =============================================================
+
+services:
+
+  # ─────────────────────────────────────────────────────────
+  # PostgreSQL Database
+  # ─────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: kgh_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-kgh_metads}
+      POSTGRES_USER: kgh
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/01_init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kgh -d kgh_metads"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kgh_network
+
+  # ─────────────────────────────────────────────────────────
+  # FastAPI Backend + Serve Frontend
+  # ─────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kgh_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://kgh:${DB_PASSWORD}@postgres:5432/${DB_NAME:-kgh_metads}
+      META_APP_ID: ${META_APP_ID}
+      META_APP_SECRET: ${META_APP_SECRET}
+      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN}
+      META_AD_ACCOUNT_ID: ${META_AD_ACCOUNT_ID}
+      META_PAGE_ID: ${META_PAGE_ID}
+      META_API_VERSION: ${META_API_VERSION:-v19.0}
+      API_SECRET_KEY: ${API_SECRET_KEY}
+      WEBHOOK_VERIFY_TOKEN: ${WEBHOOK_VERIFY_TOKEN}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8000}
+      N8N_BASE_URL: http://n8n:5678
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o}
+      LLM_API_KEY: ${LLM_API_KEY}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./frontend:/app/frontend:ro
+    networks:
+      - kgh_network
+
+  # ─────────────────────────────────────────────────────────
+  # N8N Workflow Orchestrator
+  # ─────────────────────────────────────────────────────────
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: kgh_n8n
+    restart: unless-stopped
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: ${N8N_USER:-admin}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_USER: kgh
+      DB_POSTGRESDB_PASSWORD: ${DB_PASSWORD}
+      WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost:5678/}
+      GENERIC_TIMEZONE: Asia/Jakarta
+      TZ: Asia/Jakarta
+      N8N_LOG_LEVEL: info
+      EXECUTIONS_DATA_PRUNE: "true"
+      EXECUTIONS_DATA_MAX_AGE: 168
+    ports:
+      - "5678:5678"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n/workflows:/home/node/workflows:ro
+    networks:
+      - kgh_network
+
+  # ─────────────────────────────────────────────────────────
+  # OpenClaw AI Agent
+  # ─────────────────────────────────────────────────────────
+  openclaw:
+    image: openclaw/openclaw:latest
+    container_name: kgh_openclaw
+    restart: unless-stopped
+    environment:
+      OPENCLAW_MODEL_PROVIDER: ${LLM_PROVIDER:-openai}
+      OPENCLAW_MODEL_NAME: ${LLM_MODEL:-gpt-4o}
+      OPENCLAW_API_KEY: ${LLM_API_KEY}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      WHATSAPP_TOKEN: ${WHATSAPP_TOKEN}
+      WHATSAPP_NUMBER_ID: ${WHATSAPP_NUMBER_ID}
+      OPENCLAW_BACKEND_URL: http://backend:8000
+      OPENCLAW_N8N_URL: http://n8n:5678
+    ports:
+      - "3100:3100"
+    depends_on:
+      - backend
+    volumes:
+      - ./openclaw/skills:/app/skills:ro
+      - ./openclaw/config.yaml:/app/config.yaml:ro
+    networks:
+      - kgh_network
+
+  # ─────────────────────────────────────────────────────────
+  # Ollama — Local LLM (Optional, profile: local-llm)
+  # ─────────────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: kgh_ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    profiles:
+      - local-llm
+    networks:
+      - kgh_network
+
+# ─────────────────────────────────────────────────────────
+# Volumes
+# ─────────────────────────────────────────────────────────
+volumes:
+  pgdata:
+    driver: local
+  n8n_data:
+    driver: local
+  ollama_data:
+    driver: local
+
+# ─────────────────────────────────────────────────────────
+# Networks
+# ─────────────────────────────────────────────────────────
+networks:
+  kgh_network:
+    driver: bridge
+    name: kgh_metads_network
