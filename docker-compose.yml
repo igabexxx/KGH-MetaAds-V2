@@ -130,9 +130,6 @@ services:
       - "3100:3100"
     depends_on:
       - backend
-    volumes:
-      - ./openclaw/skills:/app/skills:ro
-      - ./openclaw/config.yaml:/app/config.yaml:ro
     networks:
       - kgh_network
 
