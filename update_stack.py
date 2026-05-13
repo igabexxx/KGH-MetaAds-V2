@@ -1,6 +1,7 @@
 import urllib.request
 import json
 import ssl
+import os
 
 portainer_url = "https://192.168.101.226:9443/api/stacks/11/git/redeploy?endpointId=3"
 api_key = "ptr_hPzUizSxcX3DK4M6ZGoiX0Si2PZLQgqrHTGv3mVhkdc="
@@ -19,8 +20,8 @@ payload = {
         {"name": "N8N_PASSWORD", "value": "admin123"},
         {"name": "N8N_ENCRYPTION_KEY", "value": "demo_n8n_key_12345"},
         {"name": "LLM_PROVIDER", "value": "openai"},
-        {"name": "LLM_MODEL", "value": "gpt-4o"},
-        {"name": "LLM_API_KEY", "value": "sk-demo-key"},
+        {"name": "LLM_MODEL", "value": "gpt-4o-mini"},
+        {"name": "LLM_API_KEY", "value": os.environ.get("LLM_API_KEY", "")},
         {"name": "TELEGRAM_BOT_TOKEN", "value": "demo-bot-token"},
         {"name": "TELEGRAM_CHAT_ID", "value": "demo-chat-id"},
         {"name": "WHATSAPP_TOKEN", "value": "demo-wa-token"},
