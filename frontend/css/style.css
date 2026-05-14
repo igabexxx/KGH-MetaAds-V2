@@ -419,3 +419,33 @@ a { text-decoration: none; color: var(--accent-1); }
 }
 .clickable-name { cursor: pointer; color: var(--accent-1); transition: color 0.2s; }
 .clickable-name:hover { color: var(--text-main); text-decoration: underline; }
+
+/* ═══ SORTABLE TABLE HEADERS ═══ */
+.th-sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+.th-sortable:hover {
+  color: var(--accent-1);
+}
+.th-sortable:hover .sort-icon {
+  opacity: 1;
+}
+.sort-icon {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 11px;
+  opacity: 0.45;
+  transition: opacity 0.2s, color 0.2s;
+}
+.th-sortable.sort-asc,
+.th-sortable.sort-desc {
+  color: var(--accent-1);
+}
+.th-sortable.sort-asc .sort-icon,
+.th-sortable.sort-desc .sort-icon {
+  opacity: 1;
+  color: var(--accent-1);
+}

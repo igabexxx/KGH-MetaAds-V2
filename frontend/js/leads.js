@@ -4,6 +4,7 @@
 
 let currentPage = 1;
 let currentFilters = { status: '', score_label: '', assigned_to: '', search: '' };
+let currentSort   = { by: 'created_at', order: 'desc' };
 
 async function loadLeads() {
   await loadLeadStats();
@@ -11,7 +12,7 @@ async function loadLeads() {
   const tbody = document.getElementById('tbody-leads');
   tbody.innerHTML = `<tr><td colspan="8" class="loading-row"><span class="spinner"></span> Memuat data...</td></tr>`;
   
-  const params = { ...currentFilters, page: currentPage, limit: 20 };
+  const params = { ...currentFilters, sort_by: currentSort.by, sort_order: currentSort.order, page: currentPage, limit: 20 };
   const leads = await api.get('/leads', params);
   
   if (!leads || leads.length === 0) {
@@ -81,6 +82,34 @@ async function loadLeadStats() {
     
     agentFilter.innerHTML = html;
     if (currVal) agentFilter.value = currVal;
+  }
+}
+
+function setSortBy(col) {
+  if (currentSort.by === col) {
+    currentSort.order = currentSort.order === 'desc' ? 'asc' : 'desc';
+  } else {
+    currentSort.by    = col;
+    currentSort.order = 'desc';
+  }
+  currentPage = 1;
+  updateSortHeaders();
+  loadLeads();
+}
+
+function updateSortHeaders() {
+  // Reset all sortable headers
+  document.querySelectorAll('.th-sortable').forEach(th => {
+    th.classList.remove('sort-asc', 'sort-desc');
+    const icon = th.querySelector('.sort-icon');
+    if (icon) icon.textContent = '⇅';
+  });
+  // Highlight active sort column
+  const activeTh = document.querySelector(`.th-sortable[data-sort="${currentSort.by}"]`);
+  if (activeTh) {
+    activeTh.classList.add(currentSort.order === 'desc' ? 'sort-desc' : 'sort-asc');
+    const icon = activeTh.querySelector('.sort-icon');
+    if (icon) icon.textContent = currentSort.order === 'desc' ? '↓' : '↑';
   }
 }
 

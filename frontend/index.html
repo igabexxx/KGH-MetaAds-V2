@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=1.6" />
+  <link rel="stylesheet" href="css/style.css?v=1.7" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.min.js"></script>
 </head>
@@ -345,12 +345,12 @@
             <thead>
               <tr>
                 <th>#</th>
-                <th>Nama</th>
+                <th class="th-sortable" data-sort="full_name" onclick="setSortBy('full_name')" title="Urutkan berdasarkan nama">Nama <span class="sort-icon">⇅</span></th>
                 <th>Kontak</th>
-                <th>Score</th>
+                <th class="th-sortable sort-desc" data-sort="score" onclick="setSortBy('score')" title="Urutkan berdasarkan score">Score <span class="sort-icon">⇅</span></th>
                 <th>Status</th>
                 <th>Assigned</th>
-                <th>Tanggal</th>
+                <th class="th-sortable sort-desc" data-sort="created_at" onclick="setSortBy('created_at')" title="Urutkan berdasarkan tanggal">Tanggal <span class="sort-icon">↓</span></th>
                 <th>Aksi</th>
               </tr>
             </thead>
@@ -502,9 +502,9 @@
 <script src="js/api.js?v=1.1"></script>
 <script src="js/app.js?v=1.1"></script>
 <script src="js/dashboard.js?v=1.2"></script>
-<script src="js/campaigns.js?v=1.6"></script>
-<script src="js/leads.js?v=1.6"></script>
-<script src="js/analytics.js?v=1.6"></script>
+<script src="js/campaigns.js?v=1.7"></script>
+<script src="js/leads.js?v=1.7"></script>
+<script src="js/analytics.js?v=1.7"></script>
 
 <script>
   // Initialize Lucide icons

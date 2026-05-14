@@ -3,7 +3,7 @@ KGH Meta Ads — Leads Router
 """
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc, and_
+from sqlalchemy import select, func, desc, asc, and_
 from datetime import date, datetime, timedelta
 from typing import Optional, List
 import hmac, hashlib, json, os
@@ -30,12 +30,23 @@ async def list_leads(
     score_label: Optional[str] = Query(None),
     assigned_to: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
+    sort_by: Optional[str] = Query("created_at"),
+    sort_order: Optional[str] = Query("desc"),
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db)
 ):
     """List leads with filtering, sorting, and pagination"""
-    query = select(Lead).order_by(desc(Lead.created_at))
+    # Build sort column
+    sort_col_map = {
+        "score": Lead.score,
+        "created_at": Lead.created_at,
+        "full_name": Lead.full_name,
+        "status": Lead.status,
+    }
+    sort_col = sort_col_map.get(sort_by, Lead.created_at)
+    order_fn = desc if sort_order == "desc" else asc
+    query = select(Lead).order_by(order_fn(sort_col))
 
     if status:
         query = query.where(Lead.status == status.upper())
