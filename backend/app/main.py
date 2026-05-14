@@ -1,7 +1,7 @@
 """
 KGH Meta Ads — FastAPI Main Entry Point
 """
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -12,7 +12,8 @@ import os
 
 from app.config import settings
 from app.database import init_db
-from app.routers import campaigns, leads, analytics, socialchat, ai_config
+from app.routers import campaigns, leads, analytics, socialchat, ai_config, auth
+from app.routers.auth import require_auth
 
 logger = structlog.get_logger()
 
@@ -63,11 +64,15 @@ async def log_requests(request: Request, call_next):
 
 
 # ─── Routers ──────────────────────────────────────────────
-app.include_router(campaigns.router)
-app.include_router(leads.router)
-app.include_router(analytics.router)
-app.include_router(socialchat.router, prefix="/api/v1/socialchat", tags=["SocialChat"])
-app.include_router(ai_config.router)
+# Auth router (public — no JWT required)
+app.include_router(auth.router)
+
+# Protected routers — require valid JWT
+app.include_router(campaigns.router,   dependencies=[Depends(require_auth)])
+app.include_router(leads.router,        dependencies=[Depends(require_auth)])
+app.include_router(analytics.router,    dependencies=[Depends(require_auth)])
+app.include_router(socialchat.router,   prefix="/api/v1/socialchat", tags=["SocialChat"], dependencies=[Depends(require_auth)])
+app.include_router(ai_config.router,    dependencies=[Depends(require_auth)])
 
 
 # ─── Health Check ─────────────────────────────────────────
@@ -95,9 +100,16 @@ async def api_status():
 frontend_path = "/app/frontend"
 
 if os.path.isdir(frontend_path):
-    # app.mount("/assets", StaticFiles(directory=f"{frontend_path}/assets"), name="assets")
     app.mount("/css", StaticFiles(directory=f"{frontend_path}/css"), name="css")
-    app.mount("/js", StaticFiles(directory=f"{frontend_path}/js"), name="js")
+    app.mount("/js",  StaticFiles(directory=f"{frontend_path}/js"),  name="js")
+
+    @app.get("/login.html", include_in_schema=False)
+    async def serve_login():
+        """Serve the login page (public, no auth required)"""
+        login_file = os.path.join(frontend_path, "login.html")
+        if os.path.exists(login_file):
+            return FileResponse(login_file)
+        return JSONResponse({"error": "Login page not found"}, status_code=404)
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(full_path: str):

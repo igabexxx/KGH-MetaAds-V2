@@ -46,6 +46,12 @@ class Settings(BaseSettings):
     MESSAGING_BOT_TOKEN: str = ""
     MESSAGING_CHAT_ID: str = ""
 
+    # ─── Auth ──────────────────────────────────────────────
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD: str = "kgh2024!"      # overridden by env var in production
+    JWT_SECRET: str = "kgh-jwt-secret-change-in-prod"
+    JWT_EXPIRE_HOURS: int = 12
+
     class Config:
         env_file = ".env"
         case_sensitive = True

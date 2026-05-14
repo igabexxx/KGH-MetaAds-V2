@@ -1,0 +1,231 @@
+{
+  "name": "API: Get SocialChat Messages",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "socialchat/messages",
+        "responseMode": "lastNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, OPTIONS"
+              }
+            ]
+          }
+        }
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "socialchat-messages-api"
+    },
+    {
+      "parameters": {
+        "jsCode": "const phone = $input.first().json.query.phone;\nreturn [{json:{phone}}];"
+      },
+      "id": "get-phone",
+      "name": "Get Phone",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.socialchat.id/partner/conversation?limit=100&channelId=69f1c4458c09ad192d585af5",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer MTI0NjExMzgxNl9TeWhLc2dDdUlUVGcwQTdWTkZpVg=="
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-convs",
+      "name": "Fetch Convs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const phone = $items('Get Phone')[0].json.phone;\nconst convs = $input.first().json.docs || [];\nlet convId = null;\nfor (const c of convs) {\n  if (c.senderId && c.senderId.includes(phone)) {\n    convId = c._id;\n    break;\n  }\n}\nif (!convId) return [{json:{error:'Not found'}}];\nreturn [{json:{convId}}];"
+      },
+      "id": "find-conv",
+      "name": "Find Conv",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ !!$json.convId }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-found",
+      "name": "If Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://api.socialchat.id/partner/message/' + $json.convId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer MTI0NjExMzgxNl9TeWhLc2dDdUlUVGcwQTdWTkZpVg=="
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-msgs",
+      "name": "Fetch Msgs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json: {messages: $input.first().json.messages || []}}];"
+      },
+      "id": "format-msgs",
+      "name": "Format Msgs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json: {messages: []}}];"
+      },
+      "id": "format-empty",
+      "name": "Format Empty",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get Phone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Phone": {
+      "main": [
+        [
+          {
+            "node": "Fetch Convs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Convs": {
+      "main": [
+        [
+          {
+            "node": "Find Conv",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Conv": {
+      "main": [
+        [
+          {
+            "node": "If Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Found": {
+      "main": [
+        [
+          {
+            "node": "Fetch Msgs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Msgs": {
+      "main": [
+        [
+          {
+            "node": "Format Msgs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

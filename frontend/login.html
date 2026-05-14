@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KGH Ads — Login</title>
+  <meta name="description" content="Login ke dashboard KGH Meta Ads" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #070b1e;
+      --card: #0f1430;
+      --border: rgba(255,255,255,0.08);
+      --accent: #667eea;
+      --accent2: #764ba2;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --success: #10b981;
+      --danger: #ef4444;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ── Animated background ── */
+    .bg-orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.18;
+      pointer-events: none;
+      animation: drift 12s ease-in-out infinite alternate;
+    }
+    .bg-orb-1 { width: 600px; height: 600px; background: #667eea; top: -200px; left: -200px; animation-duration: 14s; }
+    .bg-orb-2 { width: 500px; height: 500px; background: #764ba2; bottom: -150px; right: -100px; animation-duration: 18s; animation-delay: -6s; }
+    .bg-orb-3 { width: 300px; height: 300px; background: #06b6d4; top: 40%; left: 60%; animation-duration: 10s; animation-delay: -3s; }
+    @keyframes drift {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(40px, -30px) scale(1.05); }
+    }
+
+    /* ── Grid lines ── */
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(102,126,234,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(102,126,234,0.04) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+    }
+
+    /* ── Login card ── */
+    .login-wrap {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+    }
+
+    .login-card {
+      background: rgba(15, 20, 48, 0.85);
+      border: 1px solid rgba(102,126,234,0.2);
+      border-radius: 24px;
+      padding: 44px 40px 40px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.04);
+      animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: translateY(24px) scale(0.96); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ── Logo ── */
+    .login-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .login-logo-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .login-logo-text { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
+    .login-logo-sub  { font-size: 12px; color: var(--muted); font-weight: 400; }
+
+    /* ── Headings ── */
+    .login-title { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; }
+    .login-sub   { font-size: 14px; color: var(--muted); margin-bottom: 32px; }
+
+    /* ── Form ── */
+    .form-group { margin-bottom: 18px; }
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .form-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .form-input-icon {
+      position: absolute;
+      left: 14px;
+      color: var(--muted);
+      pointer-events: none;
+      font-size: 16px;
+    }
+    .form-input {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 13px 14px 13px 42px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+    .form-input:focus {
+      border-color: var(--accent);
+      background: rgba(102,126,234,0.06);
+      box-shadow: 0 0 0 3px rgba(102,126,234,0.15);
+    }
+    .form-input.error { border-color: var(--danger); }
+
+    /* Password toggle */
+    .btn-eye {
+      position: absolute;
+      right: 14px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 16px;
+      transition: color 0.2s;
+      padding: 4px;
+    }
+    .btn-eye:hover { color: var(--text); }
+
+    /* ── Error message ── */
+    .error-msg {
+      display: none;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-size: 13px;
+      color: #fca5a5;
+      margin-bottom: 18px;
+      align-items: center;
+      gap: 8px;
+    }
+    .error-msg.show { display: flex; animation: shake 0.4s ease; }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%,60%  { transform: translateX(-6px); }
+      40%,80%  { transform: translateX(6px); }
+    }
+
+    /* ── Submit button ── */
+    .btn-login {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      border-radius: 12px;
+      color: white;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.25s;
+      position: relative;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .btn-login:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(102,126,234,0.4);
+    }
+    .btn-login:active:not(:disabled) { transform: translateY(0); }
+    .btn-login:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .btn-login .btn-spinner {
+      display: none;
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .btn-login.loading .btn-text  { display: none; }
+    .btn-login.loading .btn-spinner { display: block; }
+
+    /* ── Footer ── */
+    .login-footer {
+      margin-top: 28px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .login-footer strong { color: rgba(255,255,255,0.5); }
+  </style>
+</head>
+<body>
+
+<div class="bg-orb bg-orb-1"></div>
+<div class="bg-orb bg-orb-2"></div>
+<div class="bg-orb bg-orb-3"></div>
+<div class="bg-grid"></div>
+
+<div class="login-wrap">
+  <div class="login-card">
+
+    <!-- Logo -->
+    <div class="login-logo">
+      <div class="login-logo-icon">🏠</div>
+      <div>
+        <div class="login-logo-text">KGH Ads</div>
+        <div class="login-logo-sub">Meta Automation Dashboard</div>
+      </div>
+    </div>
+
+    <!-- Heading -->
+    <h1 class="login-title">Selamat Datang</h1>
+    <p class="login-sub">Masuk untuk mengakses dashboard leads & campaign</p>
+
+    <!-- Error -->
+    <div class="error-msg" id="error-msg">
+      <span>⚠</span>
+      <span id="error-text">Username atau password salah</span>
+    </div>
+
+    <!-- Form -->
+    <form id="login-form" onsubmit="doLogin(event)">
+      <div class="form-group">
+        <label class="form-label" for="username">Username</label>
+        <div class="form-input-wrap">
+          <span class="form-input-icon">👤</span>
+          <input
+            type="text"
+            id="username"
+            class="form-input"
+            placeholder="Masukkan username"
+            autocomplete="username"
+            required
+          />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <div class="form-input-wrap">
+          <span class="form-input-icon">🔒</span>
+          <input
+            type="password"
+            id="password"
+            class="form-input"
+            placeholder="Masukkan password"
+            autocomplete="current-password"
+            required
+          />
+          <button type="button" class="btn-eye" id="btn-eye" onclick="togglePwd()">👁</button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-login" id="btn-login">
+        <span class="btn-text">Masuk ke Dashboard</span>
+        <div class="btn-spinner"></div>
+      </button>
+    </form>
+
+    <div class="login-footer">
+      Kayana Green Hills &nbsp;·&nbsp; <strong>Sales Dashboard</strong> &nbsp;·&nbsp; v2.0
+    </div>
+  </div>
+</div>
+
+<script>
+  // Redirect if already logged in
+  if (localStorage.getItem('kgh_token')) {
+    window.location.replace('/');
+  }
+
+  function togglePwd() {
+    const pw = document.getElementById('password');
+    const eye = document.getElementById('btn-eye');
+    if (pw.type === 'password') {
+      pw.type = 'text';
+      eye.textContent = '🙈';
+    } else {
+      pw.type = 'password';
+      eye.textContent = '👁';
+    }
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error-msg');
+    const txt = document.getElementById('error-text');
+    txt.textContent = msg || 'Username atau password salah';
+    el.classList.remove('show');
+    void el.offsetWidth; // force reflow for animation replay
+    el.classList.add('show');
+    document.getElementById('password').classList.add('error');
+    document.getElementById('username').classList.add('error');
+  }
+
+  function clearError() {
+    document.getElementById('error-msg').classList.remove('show');
+    document.getElementById('password').classList.remove('error');
+    document.getElementById('username').classList.remove('error');
+  }
+
+  async function doLogin(e) {
+    e.preventDefault();
+    clearError();
+
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const btn = document.getElementById('btn-login');
+
+    if (!username || !password) return;
+
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showError(data.detail || 'Login gagal. Periksa username dan password.');
+        return;
+      }
+
+      // Store token and username
+      localStorage.setItem('kgh_token', data.access_token);
+      localStorage.setItem('kgh_username', data.username);
+
+      // Redirect to dashboard
+      window.location.replace('/');
+
+    } catch (err) {
+      showError('Tidak dapat terhubung ke server. Coba lagi.');
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  }
+
+  // Enter key support
+  document.getElementById('username').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('password').focus();
+  });
+</script>
+</body>
+</html>

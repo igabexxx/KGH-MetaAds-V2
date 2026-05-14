@@ -8,9 +8,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=1.9" />
+  <link rel="stylesheet" href="css/style.css?v=2.0" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.min.js"></script>
+  <!-- Auth guard: redirect to login if no token -->
+  <script>
+    (function() {
+      var token = localStorage.getItem('kgh_token');
+      if (!token) { window.location.replace('/login.html'); }
+    })();
+  </script>
 </head>
 <body>
 
@@ -84,6 +91,18 @@
         <div class="status-dot" id="dot-meta"></div>
         <span id="label-meta">Meta API</span>
       </div>
+    </div>
+    <div class="sidebar-user">
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-avatar" id="user-avatar">A</div>
+        <div>
+          <div class="sidebar-user-name" id="user-display-name">Admin</div>
+          <div class="sidebar-user-role">Administrator</div>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()" title="Logout">
+        <i data-lucide="log-out" size="15"></i>
+      </button>
     </div>
   </aside>
 
@@ -520,7 +539,7 @@
 <div id="toast-container" class="toast-container"></div>
 
 <!-- ═══ SCRIPTS ═══ -->
-<script src="js/api.js?v=1.9"></script>
+<script src="js/api.js?v=2.0"></script>
 <script src="js/app.js?v=1.1"></script>
 <script src="js/dashboard.js?v=1.2"></script>
 <script src="js/campaigns.js?v=1.9"></script>
@@ -531,6 +550,26 @@
 <script>
   // Initialize Lucide icons
   lucide.createIcons();
+
+  // Display logged-in username
+  (function() {
+    const uname = localStorage.getItem('kgh_username') || 'Admin';
+    const el = document.getElementById('user-display-name');
+    const av = document.getElementById('user-avatar');
+    if (el) el.textContent = uname;
+    if (av) av.textContent = uname.charAt(0).toUpperCase();
+  })();
+</script>
+
+<script>
+  function doLogout() {
+    if (!confirm('Yakin ingin keluar dari dashboard?')) return;
+    // Call backend logout (optional, token is client-side)
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    localStorage.removeItem('kgh_token');
+    localStorage.removeItem('kgh_username');
+    window.location.replace('/login.html');
+  }
 </script>
 </body>
 </html>
