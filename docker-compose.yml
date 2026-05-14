@@ -92,6 +92,7 @@ services:
       GENERIC_TIMEZONE: Asia/Jakarta
       TZ: Asia/Jakarta
       N8N_LOG_LEVEL: info
+      N8N_SECURE_COOKIE: "false"
       EXECUTIONS_DATA_PRUNE: "true"
       EXECUTIONS_DATA_MAX_AGE: 168
     ports:
