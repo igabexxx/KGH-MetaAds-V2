@@ -66,7 +66,6 @@ services:
     ports:
       - "8005:8000"
     volumes:
-      - ./backend/app:/app/app
       - ./frontend:/app/frontend
     depends_on:
       - postgres
