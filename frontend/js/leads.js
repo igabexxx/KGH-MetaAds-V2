@@ -25,7 +25,7 @@ async function loadLeads() {
     <tr>
       <td>${(currentPage - 1) * 20 + i + 1}</td>
       <td>
-        <strong class="clickable-name" onclick="openChatModal('${l.phone}', '${safeName}')" title="Lihat Riwayat Chat">${l.full_name || 'Tanpa Nama'}</strong><br>
+        <strong class="clickable-name" onclick="openChatModal(${l.id}, '${safeName}', '${l.phone}')" title="Lihat Riwayat Chat">${l.full_name || 'Tanpa Nama'}</strong><br>
         <small style="color:var(--text-muted)">${l.source}</small>
       </td>
       <td>${l.phone || '-'}<br><small style="color:var(--text-muted)">${l.email || '-'}</small></td>
@@ -144,121 +144,59 @@ async function openLeadModal(id) {
   `;
 }
 
-async function openChatModal(phone, name) {
+async function openChatModal(leadId, name, phone) {
   let modal = document.getElementById('modal-chat');
-  
-  // If index.html is cached and modal-chat is missing, create it dynamically
   if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'modal-chat';
-    modal.className = 'modal-overlay';
-    modal.style.display = 'none';
-    modal.innerHTML = `
-      <div class="modal-box" style="max-width: 600px; display:flex; flex-direction:column; height:80vh">
-        <div class="modal-header">
-          <div>
-            <h3 id="modal-chat-title" style="margin:0">Riwayat Chat</h3>
-            <small id="modal-chat-subtitle" style="color:var(--text-muted)">-</small>
-          </div>
-          <button class="modal-close" id="modal-chat-close" onclick="document.getElementById('modal-chat').style.display='none'"><i data-lucide="x" size="18"></i></button>
-        </div>
-        <div class="modal-body" id="modal-chat-body" style="flex:1; overflow-y:auto; padding:16px; background:#0f172a; display:flex; flex-direction:column; gap:12px;">
-          Loading chat...
-        </div>
-      </div>
-    `;
-    document.body.appendChild(modal);
-    if (typeof lucide !== 'undefined') lucide.createIcons();
+    console.error('modal-chat element not found');
+    return;
   }
 
   const body = document.getElementById('modal-chat-body');
   document.getElementById('modal-chat-title').textContent = name || 'Tanpa Nama';
-  document.getElementById('modal-chat-subtitle').textContent = phone;
-  
+  document.getElementById('modal-chat-subtitle').textContent = phone || '';
+
   modal.style.display = 'flex';
-  body.innerHTML = '<div style="text-align:center; padding:40px"><span class="spinner"></span></div>';
-  
+  body.innerHTML = '<div style="text-align:center; padding:40px"><span class="spinner"></span> Memuat percakapan...</div>';
+
   try {
-    // 1. Fetch from SocialChat API directly
-    const SC_KEY = "MTI0NjExMzgxNl9TeWhLc2dDdUlUVGcwQTdWTkZpVg==";
-    
-    let convId = null;
-    let searchQuery = name;
-    
-    // Clean phone number for searching
-    const cleanPhone = phone ? phone.replace(/[^0-9]/g, '') : '';
-    if (cleanPhone && cleanPhone.length > 5) {
-      searchQuery = cleanPhone;
-    }
-    
-    // Attempt to search conversation
-    let res = await fetch(`https://api.socialchat.id/partner/conversation?page=1&limit=10&search=${encodeURIComponent(searchQuery)}`, {
-      headers: { "Authorization": `Bearer ${SC_KEY}` }
-    });
-    if (!res.ok) throw new Error('Gagal memuat conversation ID');
-    let data = await res.json();
-    
-    if (data.docs && data.docs.length > 0) {
-      convId = data.docs[0]._id;
-    } else if (searchQuery !== name) {
-      // Fallback: search by name if phone search failed
-      res = await fetch(`https://api.socialchat.id/partner/conversation?page=1&limit=10&search=${encodeURIComponent(name)}`, {
-        headers: { "Authorization": `Bearer ${SC_KEY}` }
-      });
-      data = await res.json();
-      if (data.docs && data.docs.length > 0) {
-        convId = data.docs[0]._id;
-      }
-    }
-    
-    if (!convId) {
-      body.innerHTML = `<div style="text-align:center; padding:20px; color:var(--warning)">Percakapan tidak ditemukan di SocialChat.</div>`;
+    // Use backend proxy — avoids CORS issues with SocialChat API
+    const data = await api.get(`/leads/${leadId}/messages`);
+
+    const messages = (data && data.messages) || [];
+    if (data && data.error && messages.length === 0) {
+      body.innerHTML = `<div style="text-align:center;padding:20px;color:var(--warning)">&#9888; ${data.error}</div>`;
       return;
     }
-    
-    // Fetch messages
-    const msgRes = await fetch(`https://api.socialchat.id/partner/message/${convId}`, {
-      headers: { "Authorization": `Bearer ${SC_KEY}` }
-    });
-    if (!msgRes.ok) throw new Error('Gagal memuat pesan');
-    const msgData = await msgRes.json();
-    
-    const messages = msgData.messages || [];
     if (messages.length === 0) {
-      body.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted)">Belum ada riwayat percakapan.</div>`;
+      body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Belum ada riwayat percakapan.</div>';
       return;
     }
-    
-    // Sort just in case
-    messages.sort((a, b) => new Date(a.sendAt) - new Date(b.sendAt));
-    
+
     let html = '';
     messages.forEach(msg => {
-      const isMe = msg.senderName === 'Kayana Green Hills' || msg.senderId.includes(':');
-      const sender = isMe ? msg.createdBy?.email?.split('@')[0] || 'Agent' : name;
-      const time = new Date(msg.sendAt).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+      const isMe = msg.sendBy === 'agent' || (msg.senderName && msg.senderName !== name);
+      const sender = isMe ? (msg.senderName || 'Agent') : (name || 'Lead');
+      const rawTime = msg.sendAt || msg.createdAt || '';
+      const time = rawTime ? new Date(rawTime).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) : '';
+      const rawDate = rawTime ? new Date(rawTime).toLocaleDateString('id-ID', {day:'2-digit', month:'short'}) : '';
       const txt = msg.text || (msg.media ? '[Media]' : '[Sistem]');
-      
+
       html += `
         <div class="chat-message ${isMe ? 'me' : 'them'}">
           <div class="chat-bubble">${txt}</div>
           <div class="chat-meta">
-            <span>${sender}</span> • <span>${time}</span>
+            <span>${sender}</span> &bull; <span>${rawDate} ${time}</span>
           </div>
         </div>
       `;
     });
-    
+
     body.innerHTML = html;
-    
-    // Scroll to bottom
-    setTimeout(() => {
-      body.scrollTop = body.scrollHeight;
-    }, 100);
-    
+    setTimeout(() => { body.scrollTop = body.scrollHeight; }, 100);
+
   } catch (e) {
-    console.error(e);
-    body.innerHTML = `<div style="text-align:center; padding:20px; color:var(--danger)">Terjadi kesalahan saat memuat chat.</div>`;
+    console.error('openChatModal error:', e);
+    body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--danger)">Gagal memuat percakapan. Periksa koneksi.</div>';
   }
 }
 

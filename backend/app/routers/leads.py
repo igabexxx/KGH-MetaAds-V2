@@ -142,7 +142,10 @@ async def get_lead(lead_id: int, db: AsyncSession = Depends(get_db)):
     lead = await db.get(Lead, lead_id)
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
-    await db.refresh(lead, ["activities"])
+    try:
+        await db.refresh(lead, ["activities"])
+    except Exception:
+        pass  # activities relation may not exist for SocialChat-sourced leads
     return lead
 
 
@@ -162,19 +165,22 @@ async def get_lead_messages(lead_id: int, db: AsyncSession = Depends(get_db)):
     cf = lead.custom_fields or {}
     conv_id = cf.get("socialchat_conversation_id")
     
-    # If we don't have conv_id, search for it
+    # If we don't have conv_id, search by phone across all channels
     if not conv_id:
-        url = f"https://api.socialchat.id/partner/conversation?limit=100&channelId={channel_id}"
+        url = f"https://api.socialchat.id/partner/conversation?limit=50&search={urllib.parse.quote(lead.phone)}"
         req = urllib.request.Request(url)
         req.add_header("Authorization", f"Bearer {sc_key}")
         try:
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read())
-                for doc in data.get("docs", []):
+                docs = data.get("docs", [])
+                for doc in docs:
                     sender_id = doc.get("senderId", "")
                     if lead.phone in sender_id:
                         conv_id = doc.get("_id")
                         break
+                if not conv_id and docs:
+                    conv_id = docs[0].get("_id")
         except Exception as e:
             print("Error finding conv:", e)
             
