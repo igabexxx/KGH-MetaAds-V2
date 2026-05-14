@@ -132,3 +132,16 @@ class Notification(Base):
     is_read     = Column(Boolean, default=False, index=True)
     meta_data   = Column("metadata", JSONB, default=dict)
     created_at  = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+
+class AiSkipPhrase(Base):
+    """Phrases from Facebook Ads templates that the AI should ignore during conversation analysis."""
+    __tablename__ = "ai_skip_phrases"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    phrase      = Column(Text, nullable=False)
+    description = Column(String(255))       # e.g. "FB Ads auto-reply template"
+    match_type  = Column(String(20), default="contains")  # contains | exact | startswith
+    is_active   = Column(Boolean, default=True)
+    created_at  = Column(TIMESTAMP(timezone=True), server_default=func.now())
+

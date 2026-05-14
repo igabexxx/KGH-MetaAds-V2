@@ -570,3 +570,131 @@ a { text-decoration: none; color: var(--accent-1); }
 }
 .chat-section-label::before { left: 0; }
 .chat-section-label::after  { right: 0; }
+
+/* ═══ SKIP PHRASES UI ═══ */
+.skip-phrase-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+.skip-phrase-input {
+  flex: 2;
+  min-width: 220px;
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: var(--text-main);
+  font-size: 13px;
+  transition: border-color 0.2s;
+}
+.skip-phrase-input:focus { outline: none; border-color: var(--accent-1); }
+.skip-phrase-desc {
+  flex: 1;
+  min-width: 160px;
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: var(--text-main);
+  font-size: 13px;
+  transition: border-color 0.2s;
+}
+.skip-phrase-desc:focus { outline: none; border-color: var(--accent-1); }
+.skip-phrases-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.skip-phrase-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  transition: all 0.2s;
+}
+.skip-phrase-row.inactive {
+  opacity: 0.45;
+}
+.skip-phrase-row:hover { border-color: rgba(102,126,234,0.3); }
+.skip-phrase-main { flex: 1; min-width: 0; }
+.skip-phrase-text {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-main);
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+.skip-phrase-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.match-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.match-contains   { background: rgba(59,130,246,0.15); color: #60a5fa; }
+.match-exact      { background: rgba(139,92,246,0.15); color: #a78bfa; }
+.match-startswith { background: rgba(16,185,129,0.15); color: #34d399; }
+.skip-desc {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.skip-phrase-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.btn-toggle-phrase {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: rgba(255,255,255,0.05);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-toggle-phrase.active {
+  background: rgba(16,185,129,0.12);
+  color: var(--success);
+  border-color: rgba(16,185,129,0.3);
+}
+.btn-toggle-phrase:hover { opacity: 0.8; }
+.btn-delete-phrase {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid rgba(239,68,68,0.2);
+  background: rgba(239,68,68,0.06);
+  color: var(--danger);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.btn-delete-phrase:hover {
+  background: rgba(239,68,68,0.15);
+  border-color: var(--danger);
+}
+.empty-state {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-muted);
+  font-size: 13px;
+}

@@ -261,14 +261,40 @@ async def analyze_lead_conversation(lead_id: int, db: AsyncSession = Depends(get
             "error": msg_data.get("error", "")
         }
 
-    # 2. Build transcript (max last 30 messages to keep tokens low)
-    recent = messages[-30:]
+    # 2. Load active skip phrases from DB
+    skip_phrases = []
+    try:
+        from app.models.lead import AiSkipPhrase
+        sp_result = await db.execute(
+            select(AiSkipPhrase).where(AiSkipPhrase.is_active == True)
+        )
+        skip_phrases = sp_result.scalars().all()
+    except Exception:
+        pass  # table might not exist yet on first run
+
+    def should_skip(text: str) -> bool:
+        t = (text or "").strip().lower()
+        for sp in skip_phrases:
+            phrase = sp.phrase.strip().lower()
+            mt = sp.match_type
+            if mt == "exact"      and t == phrase:         return True
+            if mt == "startswith" and t.startswith(phrase): return True
+            if t and phrase in t:                           return True  # contains (default)
+        return False
+
+    # 3. Build filtered transcript (max last 30 genuine messages)
+    recent = messages[-50:]  # take last 50 then filter
     lines  = []
+    skipped = 0
     for m in recent:
-        role = "Agen" if (m.get("sendBy") == "agent") else "Lead"
         txt  = m.get("text") or ("[Media]" if m.get("media") else "[Sistem]")
+        if should_skip(txt):
+            skipped += 1
+            continue
+        role = "Agen" if (m.get("sendBy") == "agent") else "Lead"
         lines.append(f"{role}: {txt}")
-    transcript = "\n".join(lines)
+    recent_lines = lines[-30:]  # keep last 30 genuine messages
+    transcript = "\n".join(recent_lines)
 
     # 3. Call LLM
     llm_key   = os.environ.get("LLM_API_KEY", "")

@@ -12,7 +12,7 @@ import os
 
 from app.config import settings
 from app.database import init_db
-from app.routers import campaigns, leads, analytics, socialchat
+from app.routers import campaigns, leads, analytics, socialchat, ai_config
 
 logger = structlog.get_logger()
 
@@ -67,6 +67,7 @@ app.include_router(campaigns.router)
 app.include_router(leads.router)
 app.include_router(analytics.router)
 app.include_router(socialchat.router, prefix="/api/v1/socialchat", tags=["SocialChat"])
+app.include_router(ai_config.router)
 
 
 # ─── Health Check ─────────────────────────────────────────

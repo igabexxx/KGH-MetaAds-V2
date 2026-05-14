@@ -47,5 +47,16 @@ const api = {
       console.error('API PATCH Error:', err);
       return null;
     }
+  },
+
+  async delete(endpoint) {
+    try {
+      const res = await fetch(API_BASE + endpoint, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`API Error: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.error('API DELETE Error:', err);
+      return null;
+    }
   }
 };

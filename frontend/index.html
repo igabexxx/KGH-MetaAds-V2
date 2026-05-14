@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=1.8" />
+  <link rel="stylesheet" href="css/style.css?v=1.9" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.min.js"></script>
 </head>
@@ -461,6 +461,27 @@
             <div class="info-row"><span>N8N URL</span><strong id="info-n8n">—</strong></div>
           </div>
         </div>
+        <div class="settings-card" style="grid-column: 1 / -1">
+          <h3 class="settings-title"><i data-lucide="brain" size="16"></i> AI — Kalimat yang Diabaikan</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Kalimat template dari Facebook Ads yang harus diabaikan AI saat menganalisis percakapan. Pesan yang mengandung kalimat ini tidak akan dikirim ke AI untuk penilaian.</p>
+
+          <!-- Add form -->
+          <div class="skip-phrase-form">
+            <input type="text" id="new-skip-phrase" placeholder="Ketik kalimat yang ingin diabaikan AI..." class="skip-phrase-input" />
+            <input type="text" id="new-skip-desc" placeholder="Keterangan (opsional)" class="skip-phrase-desc" />
+            <select id="new-skip-match" class="filter-select">
+              <option value="contains">Mengandung</option>
+              <option value="exact">Sama persis</option>
+              <option value="startswith">Diawali dengan</option>
+            </select>
+            <button class="btn btn-primary" id="btn-add-skip-phrase" onclick="addSkipPhrase()">+ Tambah</button>
+          </div>
+
+          <!-- List -->
+          <div id="skip-phrases-list" class="skip-phrases-list">
+            <div class="loading-row"><span class="spinner"></span> Memuat...</div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -499,12 +520,13 @@
 <div id="toast-container" class="toast-container"></div>
 
 <!-- ═══ SCRIPTS ═══ -->
-<script src="js/api.js?v=1.1"></script>
+<script src="js/api.js?v=1.9"></script>
 <script src="js/app.js?v=1.1"></script>
 <script src="js/dashboard.js?v=1.2"></script>
-<script src="js/campaigns.js?v=1.8"></script>
-<script src="js/leads.js?v=1.8"></script>
-<script src="js/analytics.js?v=1.8"></script>
+<script src="js/campaigns.js?v=1.9"></script>
+<script src="js/leads.js?v=1.9"></script>
+<script src="js/analytics.js?v=1.9"></script>
+<script src="js/aiconfig.js?v=1.0"></script>
 
 <script>
   // Initialize Lucide icons
