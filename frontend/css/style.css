@@ -163,6 +163,7 @@ a { text-decoration: none; color: var(--accent-1); }
 .score-pill.warm:hover { background: rgba(255, 165, 2, 0.12); border-color: var(--warm); transform: translateY(-2px); box-shadow: 0 4px 15px rgba(255, 165, 2, 0.2); }
 .score-pill.cold:hover { background: rgba(123, 237, 159, 0.12); border-color: var(--cold); transform: translateY(-2px); box-shadow: 0 4px 15px rgba(123, 237, 159, 0.2); }
 .score-pill:active { transform: translateY(0) scale(0.97); }
+.score-pill > * { pointer-events: none; }
 .pill-dot { width: 10px; height: 10px; border-radius: 50%; }
 .score-pill.hot .pill-dot { background: var(--hot); box-shadow: 0 0 10px var(--hot); }
 .score-pill.warm .pill-dot { background: var(--warm); }
