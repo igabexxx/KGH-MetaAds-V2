@@ -88,3 +88,30 @@ async function checkSystemStatus() {
     if (document.getElementById('info-model')) document.getElementById('info-model').textContent = status.llm_model;
   }
 }
+
+/**
+ * Navigate to Leads page with score filter pre-selected
+ * Called from dashboard HOT/WARM/COLD pills
+ */
+function filterLeadsByScore(scoreLabel) {
+  // Set score filter in leads page
+  currentFilters = currentFilters || { status: '', score_label: '', search: '' };
+  currentFilters.score_label = scoreLabel;
+  currentFilters.status = '';
+  currentFilters.search = '';
+  currentPage = 1;
+
+  // Navigate to leads page
+  window.location.hash = 'leads';
+  switchPage('leads');
+
+  // Set the dropdown value after page switch
+  setTimeout(() => {
+    const scoreFilter = document.getElementById('lead-score-filter');
+    if (scoreFilter) scoreFilter.value = scoreLabel;
+    const statusFilter = document.getElementById('lead-status-filter');
+    if (statusFilter) statusFilter.value = '';
+    const searchInput = document.getElementById('lead-search');
+    if (searchInput) searchInput.value = '';
+  }, 100);
+}

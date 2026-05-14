@@ -164,17 +164,17 @@
 
       <!-- Lead Score Pills -->
       <div class="score-pills">
-        <div class="score-pill hot">
+        <div class="score-pill hot" onclick="filterLeadsByScore('HOT')" style="cursor:pointer" title="Lihat semua leads HOT">
           <span class="pill-dot"></span>
           <span class="pill-label">HOT</span>
           <span class="pill-count" id="pill-hot">—</span>
         </div>
-        <div class="score-pill warm">
+        <div class="score-pill warm" onclick="filterLeadsByScore('WARM')" style="cursor:pointer" title="Lihat semua leads WARM">
           <span class="pill-dot"></span>
           <span class="pill-label">WARM</span>
           <span class="pill-count" id="pill-warm">—</span>
         </div>
-        <div class="score-pill cold">
+        <div class="score-pill cold" onclick="filterLeadsByScore('COLD')" style="cursor:pointer" title="Lihat semua leads COLD">
           <span class="pill-dot"></span>
           <span class="pill-label">COLD</span>
           <span class="pill-count" id="pill-cold">—</span>
