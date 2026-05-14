@@ -191,21 +191,24 @@ async def get_lead_messages(lead_id: int, db: AsyncSession = Depends(get_db)):
             await db.commit()
             
     if not conv_id:
-        # Try search by name as fallback
-        url = f"https://api.socialchat.id/partner/conversation?limit=10&channelId={channel_id}&search={urllib.parse.quote(lead.full_name or '')}"
-        req = urllib.request.Request(url)
-        req.add_header("Authorization", f"Bearer {sc_key}")
-        try:
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                data = json.loads(resp.read())
-                docs = data.get("docs", [])
-                if docs:
-                    conv_id = docs[0].get("_id")
-                    cf["socialchat_conversation_id"] = conv_id
-                    lead.custom_fields = cf
-                    await db.commit()
-        except Exception:
-            pass
+        # Look for another lead with the same phone that already has conv_id cached
+        sibling_result = await db.execute(
+            select(Lead).where(
+                Lead.phone == lead.phone,
+                Lead.id != lead.id,
+                Lead.custom_fields.is_not(None)
+            ).order_by(Lead.id)
+        )
+        for sibling in sibling_result.scalars().all():
+            sibling_cf = sibling.custom_fields or {}
+            sibling_conv = sibling_cf.get("socialchat_conversation_id")
+            if sibling_conv:
+                conv_id = sibling_conv
+                # Cache it on this lead too
+                cf["socialchat_conversation_id"] = conv_id
+                lead.custom_fields = cf
+                await db.commit()
+                break
 
     if not conv_id:
         return {"messages": [], "error": "Conversation not found in SocialChat"}
