@@ -65,6 +65,9 @@ services:
       SOCIALCHAT_BASE_URL: ${SOCIALCHAT_BASE_URL}
     ports:
       - "8005:8000"
+    volumes:
+      - ./backend/app:/app/app
+      - ./frontend:/app/frontend
     depends_on:
       - postgres
     networks:

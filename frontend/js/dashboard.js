@@ -33,18 +33,103 @@ async function loadDashboard() {
   const leads = await api.get('/leads', { limit: 5 });
   const tbody = document.getElementById('tbody-recent-leads');
   if (leads && leads.length > 0) {
-    tbody.innerHTML = leads.map(l => `
+    tbody.innerHTML = leads.map(l => {
+      const safeName = (l.full_name || '-').replace(/'/g, "\\'");
+      return `
       <tr>
-        <td>${l.full_name || '-'}</td>
+        <td>
+          <strong class="clickable-name" onclick="openChatModal('${l.phone}', '${safeName}')" title="Lihat Riwayat Chat">${l.full_name || '-'}</strong>
+        </td>
         <td>${l.phone || '-'}</td>
         <td><span class="status-badge ${l.score_label.toLowerCase()}">${l.score_label}</span></td>
         <td><span class="status-badge ${l.status.toLowerCase()}">${l.status}</span></td>
         <td>${formatDate(l.created_at)}</td>
       </tr>
-    `).join('');
+    `}).join('');
   } else {
     tbody.innerHTML = `<tr><td colspan="5" style="text-align:center">Belum ada data leads</td></tr>`;
   }
+
+  // 4. Load Agent Distribution
+  await loadAgentDistribution();
+}
+
+async function loadAgentDistribution() {
+  const container = document.getElementById('agent-distribution');
+  if (!container) return;
+
+  const data = await api.get('/leads/agents/summary');
+  if (!data || !data.agents) {
+    container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:16px">Tidak ada data agen</div>';
+    return;
+  }
+
+  const agents = data.agents;
+  const unassigned = data.unassigned || 0;
+
+  let html = '<div class="agent-grid">';
+
+  agents.forEach(a => {
+    const total = a.total || 1;
+    const hotPct = Math.round((a.hot / total) * 100);
+    const warmPct = Math.round((a.warm / total) * 100);
+    const coldPct = 100 - hotPct - warmPct;
+    const safeName = a.name.replace(/'/g, "\\'");
+
+    html += `
+      <div class="agent-card" onclick="filterLeadsByAgent('${safeName}')" title="Klik untuk filter leads ${a.name}">
+        <div class="agent-card-name">${a.name}</div>
+        <div class="agent-card-total">${a.total}</div>
+        <div class="agent-card-breakdown">
+          <span class="ab-hot">\ud83d\udd25 ${a.hot}</span>
+          <span class="ab-warm">\ud83c\udf21\ufe0f ${a.warm}</span>
+          <span class="ab-cold">\u2744\ufe0f ${a.cold}</span>
+        </div>
+        <div class="agent-bar">
+          <span class="bar-hot" style="width:${hotPct}%"></span>
+          <span class="bar-warm" style="width:${warmPct}%"></span>
+          <span class="bar-cold" style="width:${coldPct}%"></span>
+        </div>
+      </div>
+    `;
+  });
+
+  if (unassigned > 0) {
+    html += `
+      <div class="agent-card" onclick="filterLeadsByAgent('__unassigned__')" title="Leads belum di-assign" style="opacity:0.7">
+        <div class="agent-card-name" style="color:var(--text-muted)">Belum Ditugaskan</div>
+        <div class="agent-card-total">${unassigned}</div>
+        <div class="agent-card-breakdown">
+          <span style="color:var(--text-muted)">Leads tanpa agen</span>
+        </div>
+      </div>
+    `;
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function filterLeadsByAgent(agentName) {
+  window.location.hash = '#leads';
+  setTimeout(() => {
+    const agentFilter = document.getElementById('lead-agent-filter');
+    if (agentFilter) {
+      // Set value if option exists, otherwise add it
+      let found = false;
+      for (const opt of agentFilter.options) {
+        if (opt.value === agentName) { found = true; break; }
+      }
+      if (!found) {
+        const opt = document.createElement('option');
+        opt.value = agentName;
+        opt.textContent = agentName === '__unassigned__' ? 'Belum Ditugaskan' : agentName;
+        agentFilter.appendChild(opt);
+      }
+      agentFilter.value = agentName;
+      agentFilter.dispatchEvent(new Event('change'));
+    }
+  }, 200);
 }
 
 async function loadDashboardCharts() {

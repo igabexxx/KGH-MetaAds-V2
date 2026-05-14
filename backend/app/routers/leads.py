@@ -6,7 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, and_
 from datetime import date, datetime, timedelta
 from typing import Optional, List
-import hmac, hashlib, json
+import hmac, hashlib, json, os
+import urllib.request
 
 from app.database import get_db
 from app.models.lead import Lead, LeadActivity, AutomationRule, AutomationLog, Notification
@@ -41,7 +42,14 @@ async def list_leads(
     if score_label:
         query = query.where(Lead.score_label == score_label.upper())
     if assigned_to:
-        query = query.where(Lead.assigned_to == assigned_to)
+        if assigned_to == "__unassigned__":
+            query = query.where(
+                (Lead.assigned_to.is_(None)) | 
+                (Lead.assigned_to == "") | 
+                (Lead.assigned_to == "Unassigned")
+            )
+        else:
+            query = query.where(Lead.assigned_to == assigned_to)
     if search:
         pattern = f"%{search}%"
         query = query.where(
@@ -87,6 +95,47 @@ async def get_lead_stats(db: AsyncSession = Depends(get_db)):
     )
 
 
+@router.get("/agents/summary")
+async def get_agents_summary(db: AsyncSession = Depends(get_db)):
+    """Get agent breakdown with lead counts and score distribution for channel segregation"""
+    # Get all distinct agents with counts
+    result = await db.execute(
+        select(
+            Lead.assigned_to,
+            func.count(Lead.id).label("total"),
+            func.count().filter(Lead.score_label == "HOT").label("hot"),
+            func.count().filter(Lead.score_label == "WARM").label("warm"),
+            func.count().filter(Lead.score_label == "COLD").label("cold"),
+        )
+        .where(Lead.assigned_to.isnot(None))
+        .where(Lead.assigned_to != "")
+        .where(Lead.assigned_to != "Unassigned")
+        .group_by(Lead.assigned_to)
+        .order_by(desc("total"))
+    )
+    rows = result.all()
+
+    agents = []
+    for row in rows:
+        agents.append({
+            "name": row.assigned_to,
+            "total": row.total,
+            "hot": row.hot,
+            "warm": row.warm,
+            "cold": row.cold,
+        })
+
+    # Also get unassigned count
+    unassigned_result = await db.execute(
+        select(func.count(Lead.id)).where(
+            (Lead.assigned_to.is_(None)) | (Lead.assigned_to == "") | (Lead.assigned_to == "Unassigned")
+        )
+    )
+    unassigned = unassigned_result.scalar() or 0
+
+    return {"agents": agents, "unassigned": unassigned}
+
+
 @router.get("/{lead_id}", response_model=LeadDetail)
 async def get_lead(lead_id: int, db: AsyncSession = Depends(get_db)):
     """Get lead detail with activity timeline"""
@@ -96,6 +145,78 @@ async def get_lead(lead_id: int, db: AsyncSession = Depends(get_db)):
     await db.refresh(lead, ["activities"])
     return lead
 
+
+@router.get("/{lead_id}/messages")
+async def get_lead_messages(lead_id: int, db: AsyncSession = Depends(get_db)):
+    """Fetch complete conversation history for a lead from SocialChat"""
+    lead = await db.get(Lead, lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    if not lead.phone:
+        return {"messages": [], "error": "No phone number attached"}
+
+    sc_key = os.environ.get("SOCIALCHAT_API_KEY", "MTI0NjExMzgxNl9TeWhLc2dDdUlUVGcwQTdWTkZpVg==")
+    channel_id = "69f1c4458c09ad192d585af5"
+    
+    cf = lead.custom_fields or {}
+    conv_id = cf.get("socialchat_conversation_id")
+    
+    # If we don't have conv_id, search for it
+    if not conv_id:
+        url = f"https://api.socialchat.id/partner/conversation?limit=100&channelId={channel_id}"
+        req = urllib.request.Request(url)
+        req.add_header("Authorization", f"Bearer {sc_key}")
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read())
+                for doc in data.get("docs", []):
+                    sender_id = doc.get("senderId", "")
+                    if lead.phone in sender_id:
+                        conv_id = doc.get("_id")
+                        break
+        except Exception as e:
+            print("Error finding conv:", e)
+            
+        if conv_id:
+            # Cache it
+            cf["socialchat_conversation_id"] = conv_id
+            lead.custom_fields = cf
+            await db.commit()
+            
+    if not conv_id:
+        # Try search by name as fallback
+        url = f"https://api.socialchat.id/partner/conversation?limit=10&channelId={channel_id}&search={urllib.parse.quote(lead.full_name or '')}"
+        req = urllib.request.Request(url)
+        req.add_header("Authorization", f"Bearer {sc_key}")
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read())
+                docs = data.get("docs", [])
+                if docs:
+                    conv_id = docs[0].get("_id")
+                    cf["socialchat_conversation_id"] = conv_id
+                    lead.custom_fields = cf
+                    await db.commit()
+        except Exception:
+            pass
+
+    if not conv_id:
+        return {"messages": [], "error": "Conversation not found in SocialChat"}
+
+    # Fetch messages
+    msg_url = f"https://api.socialchat.id/partner/message/{conv_id}"
+    req = urllib.request.Request(msg_url)
+    req.add_header("Authorization", f"Bearer {sc_key}")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+            messages = data.get("messages", [])
+            # Sort by sendAt ASC
+            messages.sort(key=lambda x: x.get("sendAt", ""))
+            return {"messages": messages}
+    except Exception as e:
+        return {"messages": [], "error": f"Failed to fetch messages: {str(e)}"}
 
 @router.post("", response_model=LeadOut, status_code=201)
 async def create_lead(payload: LeadCreate, db: AsyncSession = Depends(get_db)):

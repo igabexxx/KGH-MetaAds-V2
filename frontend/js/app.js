@@ -41,12 +41,7 @@ function switchPage(pageId) {
 document.addEventListener('DOMContentLoaded', () => {
   // Navigation
   document.querySelectorAll('.nav-item').forEach(nav => {
-    nav.addEventListener('click', (e) => {
-      e.preventDefault();
-      const pageId = nav.getAttribute('data-page');
-      window.location.hash = pageId;
-      switchPage(pageId);
-      
+    nav.addEventListener('click', () => {
       // Close mobile sidebar
       if (window.innerWidth <= 768) {
         document.getElementById('sidebar').classList.remove('open');
@@ -54,9 +49,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Handle Hash
-  const hash = window.location.hash.replace('#', '') || 'dashboard';
-  switchPage(hash);
+  // Handle Initial Hash
+  const initialHash = window.location.hash.replace('#', '') || 'dashboard';
+  switchPage(initialHash);
+
+  // Handle Hash Changes for SPA Routing
+  window.addEventListener('hashchange', () => {
+    const currentHash = window.location.hash.replace('#', '') || 'dashboard';
+    switchPage(currentHash);
+  });
 
   // Global Date Range
   const dateSelect = document.getElementById('date-range');
@@ -102,8 +103,11 @@ function filterLeadsByScore(scoreLabel) {
   currentPage = 1;
 
   // Navigate to leads page
-  window.location.hash = 'leads';
-  switchPage('leads');
+  if (window.location.hash !== '#leads') {
+    window.location.hash = 'leads';
+  } else {
+    switchPage('leads');
+  }
 
   // Set the dropdown value after page switch
   setTimeout(() => {
