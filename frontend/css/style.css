@@ -449,3 +449,124 @@ a { text-decoration: none; color: var(--accent-1); }
   opacity: 1;
   color: var(--accent-1);
 }
+
+/* ═══ AI INSIGHT CARD ═══ */
+.ai-insight-card {
+  background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08));
+  border: 1px solid rgba(102,126,234,0.25);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+.ai-insight-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.ai-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--accent-1);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.ai-intent-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+}
+.ai-summary {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-main);
+  margin-bottom: 12px;
+}
+.ai-signals-row {
+  margin-bottom: 10px;
+}
+.ai-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  display: block;
+}
+.ai-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.ai-signal-tag {
+  font-size: 11.5px;
+  padding: 3px 10px;
+  background: rgba(102,126,234,0.12);
+  border: 1px solid rgba(102,126,234,0.25);
+  border-radius: 20px;
+  color: var(--text-main);
+}
+.ai-action-box {
+  background: rgba(0,0,0,0.2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.ai-action-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-main);
+  margin-top: 4px;
+}
+.ai-confidence-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ai-conf-bar {
+  flex: 1;
+  height: 5px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.ai-conf-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+.ai-conf-pct {
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 28px;
+  text-align: right;
+}
+.chat-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 12px 0 8px;
+  position: relative;
+}
+.chat-section-label::before,
+.chat-section-label::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 30%;
+  height: 1px;
+  background: var(--border-color);
+}
+.chat-section-label::before { left: 0; }
+.chat-section-label::after  { right: 0; }

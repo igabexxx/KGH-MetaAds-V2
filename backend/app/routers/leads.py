@@ -238,6 +238,104 @@ async def get_lead_messages(lead_id: int, db: AsyncSession = Depends(get_db)):
     except Exception as e:
         return {"messages": [], "error": f"Failed to fetch messages: {str(e)}"}
 
+
+@router.get("/{lead_id}/analyze")
+async def analyze_lead_conversation(lead_id: int, db: AsyncSession = Depends(get_db)):
+    """Use LLM to analyze conversation and return structured sales recommendations"""
+    # 1. Get messages (reuse messages logic)
+    msg_data = await get_lead_messages(lead_id, db)
+    messages  = msg_data.get("messages", [])
+    lead      = await db.get(Lead, lead_id)
+
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    if not messages:
+        return {
+            "summary": "Belum ada percakapan yang bisa dianalisis.",
+            "intent": "UNKNOWN",
+            "sentiment": "NEUTRAL",
+            "hot_signals": [],
+            "recommended_action": "Hubungi lead untuk memulai percakapan.",
+            "confidence": 0,
+            "error": msg_data.get("error", "")
+        }
+
+    # 2. Build transcript (max last 30 messages to keep tokens low)
+    recent = messages[-30:]
+    lines  = []
+    for m in recent:
+        role = "Agen" if (m.get("sendBy") == "agent") else "Lead"
+        txt  = m.get("text") or ("[Media]" if m.get("media") else "[Sistem]")
+        lines.append(f"{role}: {txt}")
+    transcript = "\n".join(lines)
+
+    # 3. Call LLM
+    llm_key   = os.environ.get("LLM_API_KEY", "")
+    llm_model = os.environ.get("LLM_MODEL", "gpt-4o-mini")
+
+    if not llm_key:
+        return {
+            "summary": "AI tidak tersedia — LLM_API_KEY belum dikonfigurasi.",
+            "intent": "UNKNOWN",
+            "sentiment": "NEUTRAL",
+            "hot_signals": [],
+            "recommended_action": "Konfigurasi LLM_API_KEY di environment.",
+            "confidence": 0
+        }
+
+    system_prompt = """Kamu adalah AI sales analyst khusus properti Kayana Green Hills (KGH).
+Analisis percakapan antara agen dan lead, lalu berikan output JSON dengan format PERSIS seperti ini:
+{
+  "summary": "Ringkasan singkat percakapan dalam 1-2 kalimat (bahasa Indonesia)",
+  "intent": "HOT|WARM|COLD|LOST",
+  "sentiment": "POSITIVE|NEUTRAL|NEGATIVE",
+  "hot_signals": ["sinyal penting 1", "sinyal penting 2"],
+  "recommended_action": "Rekomendasi aksi konkret untuk agen (1-2 kalimat)",
+  "confidence": 85
+}
+Aturan:
+- intent HOT: sudah tanya harga/booking/jadwal survei/unit tersisa
+- intent WARM: tertarik tapi masih explore/bandingkan
+- intent COLD: belum serius atau baru tanya info umum
+- intent LOST: minta stop/tidak tertarik/sudah beli tempat lain
+- confidence: persentase keyakinan analisis (0-100)
+- Jawab HANYA dengan JSON, tanpa teks lain di luar JSON."""
+
+    payload = {
+        "model": llm_model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Nama lead: {lead.full_name}\nScore saat ini: {lead.score_label} ({lead.score})\n\nTranskrip percakapan:\n{transcript}"}
+        ],
+        "temperature": 0.3,
+        "response_format": {"type": "json_object"}
+    }
+
+    try:
+        req = urllib.request.Request(
+            "https://api.openai.com/v1/chat/completions",
+            data=json.dumps(payload).encode(),
+            method="POST"
+        )
+        req.add_header("Authorization", f"Bearer {llm_key}")
+        req.add_header("Content-Type", "application/json")
+
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result  = json.loads(resp.read())
+            content = result["choices"][0]["message"]["content"]
+            analysis = json.loads(content)
+            return analysis
+    except Exception as e:
+        return {
+            "summary": f"Gagal menganalisis percakapan: {str(e)}",
+            "intent": "UNKNOWN",
+            "sentiment": "NEUTRAL",
+            "hot_signals": [],
+            "recommended_action": "Periksa koneksi LLM atau coba lagi nanti.",
+            "confidence": 0
+        }
+
 @router.post("", response_model=LeadOut, status_code=201)
 async def create_lead(payload: LeadCreate, db: AsyncSession = Depends(get_db)):
     """Manually create a new lead"""

@@ -175,59 +175,92 @@ async function openLeadModal(id) {
 
 async function openChatModal(leadId, name, phone) {
   let modal = document.getElementById('modal-chat');
-  if (!modal) {
-    console.error('modal-chat element not found');
-    return;
-  }
+  if (!modal) { console.error('modal-chat element not found'); return; }
 
   const body = document.getElementById('modal-chat-body');
   document.getElementById('modal-chat-title').textContent = name || 'Tanpa Nama';
   document.getElementById('modal-chat-subtitle').textContent = phone || '';
 
   modal.style.display = 'flex';
-  body.innerHTML = '<div style="text-align:center; padding:40px"><span class="spinner"></span> Memuat percakapan...</div>';
+  body.innerHTML = '<div style="text-align:center;padding:40px"><span class="spinner"></span> Memuat percakapan & analisis AI...</div>';
 
   try {
-    // Use backend proxy — avoids CORS issues with SocialChat API
-    const data = await api.get(`/leads/${leadId}/messages`);
+    // Fetch messages + AI analysis simultaneously
+    const [msgData, aiData] = await Promise.all([
+      api.get(`/leads/${leadId}/messages`),
+      api.get(`/leads/${leadId}/analyze`)
+    ]);
 
-    const messages = (data && data.messages) || [];
-    if (data && data.error && messages.length === 0) {
-      body.innerHTML = `<div style="text-align:center;padding:20px;color:var(--warning)">&#9888; ${data.error}</div>`;
-      return;
-    }
-    if (messages.length === 0) {
-      body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Belum ada riwayat percakapan.</div>';
-      return;
-    }
+    const messages = (msgData && msgData.messages) || [];
 
-    let html = '';
-    let lastDate = '';
-    messages.forEach(msg => {
-      const isMe = msg.sendBy === 'agent' || (msg.senderName && msg.senderName !== name && msg.senderName !== '');
-      const sender = isMe ? (msg.senderName || 'Agent') : (name || 'Lead');
-      const rawTime = msg.sendAt || msg.createdAt || '';
-      const d = rawTime ? new Date(rawTime) : null;
-      const time = d ? d.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) : '';
-      const dateLabel = d ? d.toLocaleDateString('id-ID', {weekday:'short', day:'2-digit', month:'short', year:'numeric'}) : '';
-      const txt = (msg.text || (msg.media ? '📎 Media' : '⚙️ Sistem')).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // ── AI Insight Card ────────────────────────────────────
+    const intentColor = {
+      HOT: 'var(--hot)', WARM: 'var(--warm)', COLD: 'var(--cold)',
+      LOST: 'var(--danger)', UNKNOWN: 'var(--text-muted)'
+    };
+    const sentimentIcon = { POSITIVE: '😊', NEUTRAL: '😐', NEGATIVE: '😟' };
+    const ai = aiData || {};
+    const intent    = ai.intent    || 'UNKNOWN';
+    const sentiment = ai.sentiment || 'NEUTRAL';
+    const conf      = typeof ai.confidence === 'number' ? ai.confidence : 0;
+    const signals   = Array.isArray(ai.hot_signals) ? ai.hot_signals : [];
+    const signalsHtml = signals.length
+      ? signals.map(s => `<span class="ai-signal-tag">${s}</span>`).join('')
+      : '<span style="color:var(--text-muted);font-size:12px">Tidak ada sinyal khusus</span>';
+    const confColor = conf >= 70 ? 'var(--success)' : conf >= 40 ? 'var(--warning)' : 'var(--danger)';
 
-      if (dateLabel && dateLabel !== lastDate) {
-        html += `<div class="chat-date-divider">${dateLabel}</div>`;
-        lastDate = dateLabel;
-      }
-
-      html += `
-        <div class="chat-message ${isMe ? 'me' : 'them'}">
-          <div class="chat-bubble">${txt}</div>
-          <div class="chat-meta">
-            <span>${sender}</span><span>${time}</span>
+    const aiCard = `
+      <div class="ai-insight-card">
+        <div class="ai-insight-header">
+          <div class="ai-badge">✦ AI Insight</div>
+          <div class="ai-intent-badge" style="background:${intentColor[intent]}22;color:${intentColor[intent]};border:1px solid ${intentColor[intent]}55">
+            ${intent} ${sentimentIcon[sentiment] || ''}
           </div>
         </div>
-      `;
-    });
+        <p class="ai-summary">${ai.summary || '—'}</p>
+        <div class="ai-signals-row">
+          <div class="ai-section-label">Sinyal Penting</div>
+          <div class="ai-tags">${signalsHtml}</div>
+        </div>
+        <div class="ai-action-box">
+          <div class="ai-section-label">💡 Rekomendasi Aksi</div>
+          <div class="ai-action-text">${ai.recommended_action || '—'}</div>
+        </div>
+        <div class="ai-confidence-row">
+          <span class="ai-section-label">Keyakinan AI</span>
+          <div class="ai-conf-bar"><div class="ai-conf-fill" style="width:${conf}%;background:${confColor}"></div></div>
+          <span class="ai-conf-pct" style="color:${confColor}">${conf}%</span>
+        </div>
+      </div>
+      <div class="chat-section-label">Riwayat Percakapan</div>`;
 
-    body.innerHTML = html;
+    // ── Chat Messages ──────────────────────────────────────
+    let chatHtml = '';
+    if (!messages.length) {
+      chatHtml = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Belum ada riwayat percakapan.</div>';
+    } else {
+      let lastDate = '';
+      messages.forEach(msg => {
+        const isMe = msg.sendBy === 'agent' || (msg.senderName && msg.senderName !== name && msg.senderName !== '');
+        const sender = isMe ? (msg.senderName || 'Agent') : (name || 'Lead');
+        const rawTime = msg.sendAt || msg.createdAt || '';
+        const d = rawTime ? new Date(rawTime) : null;
+        const time = d ? d.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) : '';
+        const dateLabel = d ? d.toLocaleDateString('id-ID', {weekday:'short', day:'2-digit', month:'short', year:'numeric'}) : '';
+        const txt = (msg.text || (msg.media ? '📎 Media' : '⚙️ Sistem')).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        if (dateLabel && dateLabel !== lastDate) {
+          chatHtml += `<div class="chat-date-divider">${dateLabel}</div>`;
+          lastDate = dateLabel;
+        }
+        chatHtml += `
+          <div class="chat-message ${isMe ? 'me' : 'them'}">
+            <div class="chat-bubble">${txt}</div>
+            <div class="chat-meta"><span>${sender}</span><span>${time}</span></div>
+          </div>`;
+      });
+    }
+
+    body.innerHTML = aiCard + chatHtml;
     setTimeout(() => { body.scrollTop = body.scrollHeight; }, 100);
 
   } catch (e) {
