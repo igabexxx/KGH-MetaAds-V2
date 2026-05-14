@@ -173,19 +173,26 @@ async function openChatModal(leadId, name, phone) {
     }
 
     let html = '';
+    let lastDate = '';
     messages.forEach(msg => {
-      const isMe = msg.sendBy === 'agent' || (msg.senderName && msg.senderName !== name);
+      const isMe = msg.sendBy === 'agent' || (msg.senderName && msg.senderName !== name && msg.senderName !== '');
       const sender = isMe ? (msg.senderName || 'Agent') : (name || 'Lead');
       const rawTime = msg.sendAt || msg.createdAt || '';
-      const time = rawTime ? new Date(rawTime).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) : '';
-      const rawDate = rawTime ? new Date(rawTime).toLocaleDateString('id-ID', {day:'2-digit', month:'short'}) : '';
-      const txt = msg.text || (msg.media ? '[Media]' : '[Sistem]');
+      const d = rawTime ? new Date(rawTime) : null;
+      const time = d ? d.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) : '';
+      const dateLabel = d ? d.toLocaleDateString('id-ID', {weekday:'short', day:'2-digit', month:'short', year:'numeric'}) : '';
+      const txt = (msg.text || (msg.media ? '📎 Media' : '⚙️ Sistem')).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      if (dateLabel && dateLabel !== lastDate) {
+        html += `<div class="chat-date-divider">${dateLabel}</div>`;
+        lastDate = dateLabel;
+      }
 
       html += `
         <div class="chat-message ${isMe ? 'me' : 'them'}">
           <div class="chat-bubble">${txt}</div>
           <div class="chat-meta">
-            <span>${sender}</span> &bull; <span>${rawDate} ${time}</span>
+            <span>${sender}</span><span>${time}</span>
           </div>
         </div>
       `;
