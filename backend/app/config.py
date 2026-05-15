@@ -48,8 +48,8 @@ class Settings(BaseSettings):
 
     # ─── Auth ──────────────────────────────────────────────
     ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str = "kgh2024!"      # overridden by env var in production
-    JWT_SECRET: str = "kgh-jwt-secret-change-in-prod"
+    ADMIN_PASSWORD: str = "KGH@2025!"      # overridden by env var in production
+    JWT_SECRET: str = "kgh-jwt-secret-kayana2025-xK9mL2pQ"
     JWT_EXPIRE_HOURS: int = 12
 
     class Config:
