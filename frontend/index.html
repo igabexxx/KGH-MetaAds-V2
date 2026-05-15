@@ -76,6 +76,11 @@
         <i data-lucide="zap" size="18"></i>
         <span>Automation</span>
       </a>
+      <a href="#aifilter" class="nav-item" data-page="aifilter" id="nav-aifilter">
+        <i data-lucide="brain" size="18"></i>
+        <span>AI Filter</span>
+        <span class="nav-badge" id="badge-aifilter">—</span>
+      </a>
       <a href="#settings" class="nav-item" data-page="settings" id="nav-settings">
         <i data-lucide="settings" size="18"></i>
         <span>Settings</span>
@@ -481,25 +486,76 @@
           </div>
         </div>
         <div class="settings-card" style="grid-column: 1 / -1">
-          <h3 class="settings-title"><i data-lucide="brain" size="16"></i> AI — Kalimat yang Diabaikan</h3>
-          <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Kalimat template dari Facebook Ads yang harus diabaikan AI saat menganalisis percakapan. Pesan yang mengandung kalimat ini tidak akan dikirim ke AI untuk penilaian.</p>
+          <h3 class="settings-title"><i data-lucide="brain" size="16"></i> AI Filter</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:0">Kelola kalimat yang diabaikan AI di menu <strong>AI Filter</strong> pada sidebar.</p>
+        </div>
+      </div>
+    </section>
 
-          <!-- Add form -->
-          <div class="skip-phrase-form">
-            <input type="text" id="new-skip-phrase" placeholder="Ketik kalimat yang ingin diabaikan AI..." class="skip-phrase-input" />
-            <input type="text" id="new-skip-desc" placeholder="Keterangan (opsional)" class="skip-phrase-desc" />
-            <select id="new-skip-match" class="filter-select">
-              <option value="contains">Mengandung</option>
-              <option value="exact">Sama persis</option>
-              <option value="startswith">Diawali dengan</option>
-            </select>
-            <button class="btn btn-primary" id="btn-add-skip-phrase" onclick="addSkipPhrase()">+ Tambah</button>
-          </div>
+    <!-- ═══ AI FILTER PAGE ═══ -->
+    <section class="page" id="page-aifilter">
+      <div class="page-header">
+        <h1 class="page-heading">AI Filter — Kalimat yang Diabaikan</h1>
+        <p class="page-subheading">Kelola kalimat template Facebook Ads yang harus dilewati AI saat menganalisis percakapan lead</p>
+      </div>
 
-          <!-- List -->
-          <div id="skip-phrases-list" class="skip-phrases-list">
-            <div class="loading-row"><span class="spinner"></span> Memuat...</div>
-          </div>
+      <!-- Stats bar -->
+      <div class="aifilter-stats">
+        <div class="aifilter-stat-card">
+          <div class="aifilter-stat-num" id="stat-total">—</div>
+          <div class="aifilter-stat-label">Total Kalimat</div>
+        </div>
+        <div class="aifilter-stat-card">
+          <div class="aifilter-stat-num" id="stat-active" style="color:var(--success)">—</div>
+          <div class="aifilter-stat-label">Aktif</div>
+        </div>
+        <div class="aifilter-stat-card">
+          <div class="aifilter-stat-num" id="stat-inactive" style="color:var(--text-muted)">—</div>
+          <div class="aifilter-stat-label">Nonaktif</div>
+        </div>
+        <div class="aifilter-stat-card">
+          <div class="aifilter-stat-num" id="stat-contains" style="color:#60a5fa">—</div>
+          <div class="aifilter-stat-label">Tipe Contains</div>
+        </div>
+      </div>
+
+      <!-- Add Form -->
+      <div class="aifilter-add-card">
+        <div class="aifilter-add-title"><i data-lucide="plus-circle" size="16"></i> Tambah Kalimat Baru</div>
+        <div class="aifilter-add-form">
+          <input type="text" id="af-phrase" class="af-input af-input-main" placeholder="Masukkan kalimat yang ingin diabaikan AI..." />
+          <input type="text" id="af-desc" class="af-input af-input-desc" placeholder="Keterangan (opsional, contoh: Template FB Ads)" />
+          <select id="af-match" class="af-select">
+            <option value="contains">Mengandung kalimat ini</option>
+            <option value="exact">Sama persis</option>
+            <option value="startswith">Diawali dengan</option>
+          </select>
+          <button class="btn btn-primary af-btn" id="af-add-btn" onclick="afAddPhrase()">
+            <i data-lucide="plus" size="14"></i> Tambah
+          </button>
+        </div>
+        <div id="af-add-error" class="af-error" style="display:none"></div>
+      </div>
+
+      <!-- Search + List -->
+      <div class="aifilter-list-card">
+        <div class="aifilter-list-toolbar">
+          <input type="text" id="af-search" class="af-search" placeholder="Cari kalimat..." oninput="afSearch()" />
+          <select id="af-filter-match" class="af-select-sm" onchange="afSearch()">
+            <option value="">Semua tipe</option>
+            <option value="contains">Contains</option>
+            <option value="exact">Exact</option>
+            <option value="startswith">Startswith</option>
+          </select>
+          <select id="af-filter-status" class="af-select-sm" onchange="afSearch()">
+            <option value="">Semua status</option>
+            <option value="active">Aktif</option>
+            <option value="inactive">Nonaktif</option>
+          </select>
+        </div>
+
+        <div id="af-list" class="af-list">
+          <div class="loading-row"><span class="spinner"></span> Memuat kalimat...</div>
         </div>
       </div>
     </section>

@@ -27,6 +27,7 @@ function switchPage(pageId) {
     'leads': 'Lead Management',
     'analytics': 'Analytics',
     'automation': 'Automation Rules',
+    'aifilter': 'AI Filter',
     'settings': 'Settings'
   };
   document.getElementById('page-title').textContent = titleMap[pageId] || 'KGH Ads';

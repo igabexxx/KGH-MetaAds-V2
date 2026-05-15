@@ -277,26 +277,35 @@ async def analyze_lead_conversation(lead_id: int, db: AsyncSession = Depends(get
         for sp in skip_phrases:
             phrase = sp.phrase.strip().lower()
             mt = sp.match_type
-            if mt == "exact"      and t == phrase:         return True
+            if mt == "exact"      and t == phrase:          return True
             if mt == "startswith" and t.startswith(phrase): return True
             if t and phrase in t:                           return True  # contains (default)
         return False
 
-    # 3. Build filtered transcript (max last 30 genuine messages)
-    recent = messages[-50:]  # take last 50 then filter
-    lines  = []
-    skipped = 0
+    # 3. Build filtered transcript — consumer responses are primary signal
+    recent = messages[-60:]
+    consumer_lines = []
+    agent_lines    = []
+    all_lines      = []
+
     for m in recent:
         txt  = m.get("text") or ("[Media]" if m.get("media") else "[Sistem]")
         if should_skip(txt):
-            skipped += 1
             continue
-        role = "Agen" if (m.get("sendBy") == "agent") else "Lead"
-        lines.append(f"{role}: {txt}")
-    recent_lines = lines[-30:]  # keep last 30 genuine messages
-    transcript = "\n".join(recent_lines)
+        is_agent = m.get("sendBy") == "agent"
+        role = "Agen" if is_agent else "Konsumen"
+        entry = f"{role}: {txt}"
+        all_lines.append(entry)
+        if not is_agent:
+            consumer_lines.append(txt)
 
-    # 3. Call LLM
+    # Keep last 30 messages (full context), but highlight consumer count
+    recent_lines    = all_lines[-30:]
+    transcript      = "\n".join(recent_lines)
+    consumer_count  = len(consumer_lines)
+    consumer_sample = "\n".join(f"- {l}" for l in consumer_lines[-10:])  # last 10 consumer msgs
+
+    # 4. Call LLM
     llm_key   = os.environ.get("LLM_API_KEY", "")
     llm_model = os.environ.get("LLM_MODEL", "gpt-4o-mini")
 
@@ -311,28 +320,42 @@ async def analyze_lead_conversation(lead_id: int, db: AsyncSession = Depends(get
         }
 
     system_prompt = """Kamu adalah AI sales analyst khusus properti Kayana Green Hills (KGH).
-Analisis percakapan antara agen dan lead, lalu berikan output JSON dengan format PERSIS seperti ini:
+
+PENTING: Fokus UTAMA penilaian ada pada RESPON KONSUMEN, bukan agen.
+Pesan agen hanya sebagai konteks — jangan gunakan respons agen untuk menentukan intent atau sentimen.
+Nilai intent dan sentimen HANYA dari apa yang ditulis dan direspons oleh konsumen.
+
+Analisis percakapan dan berikan output JSON dengan format PERSIS seperti ini:
 {
-  "summary": "Ringkasan singkat percakapan dalam 1-2 kalimat (bahasa Indonesia)",
+  "summary": "Ringkasan singkat berdasarkan respons konsumen dalam 1-2 kalimat (bahasa Indonesia)",
   "intent": "HOT|WARM|COLD|LOST",
   "sentiment": "POSITIVE|NEUTRAL|NEGATIVE",
-  "hot_signals": ["sinyal penting 1", "sinyal penting 2"],
-  "recommended_action": "Rekomendasi aksi konkret untuk agen (1-2 kalimat)",
+  "hot_signals": ["sinyal dari kata-kata konsumen 1", "sinyal dari kata-kata konsumen 2"],
+  "recommended_action": "Rekomendasi aksi konkret untuk agen berdasarkan perilaku konsumen (1-2 kalimat)",
   "confidence": 85
 }
-Aturan:
-- intent HOT: sudah tanya harga/booking/jadwal survei/unit tersisa
-- intent WARM: tertarik tapi masih explore/bandingkan
-- intent COLD: belum serius atau baru tanya info umum
-- intent LOST: minta stop/tidak tertarik/sudah beli tempat lain
-- confidence: persentase keyakinan analisis (0-100)
+
+Aturan intent — nilai dari RESPON KONSUMEN:
+- HOT: konsumen yang tanya harga/booking/jadwal survei/unit tersisa/DP/KPR
+- WARM: konsumen tertarik, bertanya info lokasi/fasilitas/tipe rumah, atau merespons aktif
+- COLD: konsumen belum merespons substantif, hanya 1-2 kata, atau info umum saja
+- LOST: konsumen minta stop, tidak tertarik, atau sudah beli di tempat lain
+- confidence: persentase keyakinan analisis (0-100), turunkan jika konsumen sedikit merespons
 - Jawab HANYA dengan JSON, tanpa teks lain di luar JSON."""
+
+    user_content = (
+        f"Nama lead: {lead.full_name}\n"
+        f"Score saat ini: {lead.score_label} ({lead.score})\n"
+        f"Jumlah respons konsumen: {consumer_count} pesan\n\n"
+        f"=== RESPONS KONSUMEN (basis penilaian utama) ===\n{consumer_sample}\n\n"
+        f"=== TRANSKRIP LENGKAP (konteks) ===\n{transcript}"
+    )
 
     payload = {
         "model": llm_model,
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Nama lead: {lead.full_name}\nScore saat ini: {lead.score_label} ({lead.score})\n\nTranskrip percakapan:\n{transcript}"}
+            {"role": "user",   "content": user_content}
         ],
         "temperature": 0.3,
         "response_format": {"type": "json_object"}

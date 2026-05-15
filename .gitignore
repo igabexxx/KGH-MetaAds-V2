@@ -23,3 +23,8 @@ ollama_data/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Local scripts with secrets (never commit these)
+redeploy.py
+test_*.py
+check_*.py
