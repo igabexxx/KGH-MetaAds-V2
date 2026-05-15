@@ -15,6 +15,9 @@ from app.models.lead import AiSkipPhrase
 
 router = APIRouter(prefix="/api/ai-config", tags=["ai-config"])
 
+# Flag: table has been initialized for this process run
+_table_ready = False
+
 
 # ─── Schemas ──────────────────────────────────────────────
 
@@ -35,20 +38,42 @@ class SkipPhraseOut(BaseModel):
         from_attributes = True
 
 
-# ─── Ensure table exists on startup ───────────────────────
+# ─── One-time table setup (called on first request) ───────
 
 async def ensure_table(db: AsyncSession):
+    global _table_ready
+    if _table_ready:
+        return
+    _table_ready = True
+
+    # Create table with UNIQUE constraint on phrase
     await db.execute(text("""
         CREATE TABLE IF NOT EXISTS ai_skip_phrases (
             id          SERIAL PRIMARY KEY,
-            phrase      TEXT NOT NULL,
+            phrase      TEXT NOT NULL UNIQUE,
             description VARCHAR(255),
             match_type  VARCHAR(20) DEFAULT 'contains',
             is_active   BOOLEAN DEFAULT true,
             created_at  TIMESTAMPTZ DEFAULT NOW()
         )
     """))
-    # Seed default Facebook Ads template phrases
+
+    # Add UNIQUE constraint if table existed without it
+    await db.execute(text("""
+        DO $$ BEGIN
+            ALTER TABLE ai_skip_phrases ADD CONSTRAINT ai_skip_phrases_phrase_unique UNIQUE (phrase);
+        EXCEPTION WHEN duplicate_table OR duplicate_object THEN NULL;
+        END $$;
+    """))
+
+    # Remove duplicate rows — keep the one with lowest id
+    await db.execute(text("""
+        DELETE FROM ai_skip_phrases a
+        USING ai_skip_phrases b
+        WHERE a.id > b.id AND a.phrase = b.phrase
+    """))
+
+    # Seed defaults (only if phrases column is unique — safe now)
     await db.execute(text("""
         INSERT INTO ai_skip_phrases (phrase, description, match_type) VALUES
         ('Halo! Ada yang bisa kami bantu?', 'Template sambutan otomatis', 'exact'),
@@ -57,8 +82,9 @@ async def ensure_table(db: AsyncSession):
         ('Silakan tunggu, agen kami akan segera membantu', 'Template antrian agen', 'contains'),
         ('Hai! Selamat datang di Kayana Green Hills', 'Template sambutan KGH', 'contains'),
         ('Terima kasih atas minat Anda', 'Template respons awal', 'contains')
-        ON CONFLICT DO NOTHING
+        ON CONFLICT (phrase) DO NOTHING
     """))
+
     await db.commit()
 
 
@@ -69,7 +95,7 @@ async def list_skip_phrases(db: AsyncSession = Depends(get_db)):
     """List all AI skip phrases"""
     await ensure_table(db)
     result = await db.execute(
-        select(AiSkipPhrase).order_by(AiSkipPhrase.created_at.desc())
+        select(AiSkipPhrase).order_by(AiSkipPhrase.created_at.asc())
     )
     return result.scalars().all()
 
@@ -79,7 +105,13 @@ async def list_skip_phrases(db: AsyncSession = Depends(get_db)):
 @router.post("/skip-phrases", response_model=SkipPhraseOut, status_code=201)
 async def create_skip_phrase(payload: SkipPhraseCreate, db: AsyncSession = Depends(get_db)):
     """Add a new phrase to the AI skip list"""
-    await ensure_table(db)
+    # Check for duplicate
+    existing = await db.execute(
+        select(AiSkipPhrase).where(AiSkipPhrase.phrase == payload.phrase.strip())
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Kalimat ini sudah ada dalam daftar")
+
     phrase = AiSkipPhrase(
         phrase=payload.phrase.strip(),
         description=payload.description,
