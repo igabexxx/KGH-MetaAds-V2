@@ -299,11 +299,24 @@ async def analyze_lead_conversation(lead_id: int, db: AsyncSession = Depends(get
         if not is_agent:
             consumer_lines.append(txt)
 
-    # Keep last 30 messages (full context), but highlight consumer count
-    recent_lines    = all_lines[-30:]
-    transcript      = "\n".join(recent_lines)
-    consumer_count  = len(consumer_lines)
-    consumer_sample = "\n".join(f"- {l}" for l in consumer_lines[-10:])  # last 10 consumer msgs
+    consumer_count = len(consumer_lines)
+
+    # If consumer has no messages at all, skip LLM — not enough data
+    if consumer_count == 0:
+        return {
+            "summary": "Konsumen belum memberikan respons apapun dalam percakapan ini.",
+            "intent": "COLD",
+            "sentiment": "NEUTRAL",
+            "hot_signals": [],
+            "recommended_action": "Coba hubungi ulang konsumen dengan pendekatan yang lebih personal.",
+            "confidence": 30
+        }
+
+    # Build consumer-only transcript (what goes to LLM for scoring)
+    consumer_transcript = "\n".join(f"- {l}" for l in consumer_lines[-20:])
+
+    # Build full transcript just for context (agent labeled clearly)
+    context_transcript = "\n".join(all_lines[-20:])
 
     # 4. Call LLM
     llm_key   = os.environ.get("LLM_API_KEY", "")
@@ -321,34 +334,38 @@ async def analyze_lead_conversation(lead_id: int, db: AsyncSession = Depends(get
 
     system_prompt = """Kamu adalah AI sales analyst khusus properti Kayana Green Hills (KGH).
 
-PENTING: Fokus UTAMA penilaian ada pada RESPON KONSUMEN, bukan agen.
-Pesan agen hanya sebagai konteks — jangan gunakan respons agen untuk menentukan intent atau sentimen.
-Nilai intent dan sentimen HANYA dari apa yang ditulis dan direspons oleh konsumen.
+=== ATURAN KRITIS — BACA DENGAN SEKSAMA ===
+1. HANYA analisis apa yang KONSUMEN katakan. ABAIKAN sepenuhnya semua pesan dari Agen/Marketing.
+2. Field "hot_signals" WAJIB berisi kutipan atau ringkasan dari kata-kata KONSUMEN saja.
+   DILARANG KERAS memasukkan kalimat yang ditulis oleh Agen ke dalam hot_signals.
+3. Intent, sentimen, dan sinyal ditentukan MURNI dari respons konsumen.
+4. Jika konsumen hanya merespons singkat (misal: "iya", "ok", "berapa?"), confidence harus rendah.
 
-Analisis percakapan dan berikan output JSON dengan format PERSIS seperti ini:
+Output JSON PERSIS seperti ini (tidak ada teks lain):
 {
-  "summary": "Ringkasan singkat berdasarkan respons konsumen dalam 1-2 kalimat (bahasa Indonesia)",
+  "summary": "Ringkasan 1-2 kalimat tentang apa yang konsumen tanyakan/sampaikan",
   "intent": "HOT|WARM|COLD|LOST",
   "sentiment": "POSITIVE|NEUTRAL|NEGATIVE",
-  "hot_signals": ["sinyal dari kata-kata konsumen 1", "sinyal dari kata-kata konsumen 2"],
-  "recommended_action": "Rekomendasi aksi konkret untuk agen berdasarkan perilaku konsumen (1-2 kalimat)",
+  "hot_signals": ["kutipan/ringkasan dari kata konsumen 1", "kutipan dari kata konsumen 2"],
+  "recommended_action": "Aksi konkret untuk agen, berdasarkan respons konsumen (1-2 kalimat)",
   "confidence": 85
 }
 
-Aturan intent — nilai dari RESPON KONSUMEN:
-- HOT: konsumen yang tanya harga/booking/jadwal survei/unit tersisa/DP/KPR
-- WARM: konsumen tertarik, bertanya info lokasi/fasilitas/tipe rumah, atau merespons aktif
-- COLD: konsumen belum merespons substantif, hanya 1-2 kata, atau info umum saja
-- LOST: konsumen minta stop, tidak tertarik, atau sudah beli di tempat lain
-- confidence: persentase keyakinan analisis (0-100), turunkan jika konsumen sedikit merespons
-- Jawab HANYA dengan JSON, tanpa teks lain di luar JSON."""
+Aturan intent — dinilai dari kata-kata KONSUMEN:
+- HOT  : konsumen tanya harga/DP/KPR/booking/jadwal survei/unit tersisa/spesifikasi
+- WARM : konsumen bertanya info lokasi/fasilitas/tipe rumah/developer — merespons dengan substansi
+- COLD : konsumen belum merespons substantif, hanya 1-2 kata pasif, atau belum ada respons jelas
+- LOST : konsumen menyatakan tidak tertarik/minta berhenti/sudah beli di tempat lain
+- confidence: turunkan jika respons konsumen sedikit atau tidak jelas"""
 
     user_content = (
         f"Nama lead: {lead.full_name}\n"
         f"Score saat ini: {lead.score_label} ({lead.score})\n"
-        f"Jumlah respons konsumen: {consumer_count} pesan\n\n"
-        f"=== RESPONS KONSUMEN (basis penilaian utama) ===\n{consumer_sample}\n\n"
-        f"=== TRANSKRIP LENGKAP (konteks) ===\n{transcript}"
+        f"Jumlah pesan dari konsumen: {consumer_count}\n\n"
+        f"=== PESAN KONSUMEN (SATU-SATUNYA BASIS PENILAIAN) ===\n"
+        f"{consumer_transcript}\n\n"
+        f"=== KONTEKS PERCAKAPAN (hanya untuk memahami topik, JANGAN jadikan sinyal) ===\n"
+        f"{context_transcript}"
     )
 
     payload = {
@@ -357,7 +374,7 @@ Aturan intent — nilai dari RESPON KONSUMEN:
             {"role": "system", "content": system_prompt},
             {"role": "user",   "content": user_content}
         ],
-        "temperature": 0.3,
+        "temperature": 0.2,
         "response_format": {"type": "json_object"}
     }
 
