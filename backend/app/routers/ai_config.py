@@ -46,46 +46,51 @@ async def ensure_table(db: AsyncSession):
         return
     _table_ready = True
 
-    # Create table with UNIQUE constraint on phrase
+    # Create table (without UNIQUE yet — we'll add it after dedup)
     await db.execute(text("""
         CREATE TABLE IF NOT EXISTS ai_skip_phrases (
             id          SERIAL PRIMARY KEY,
-            phrase      TEXT NOT NULL UNIQUE,
+            phrase      TEXT NOT NULL,
             description VARCHAR(255),
             match_type  VARCHAR(20) DEFAULT 'contains',
             is_active   BOOLEAN DEFAULT true,
             created_at  TIMESTAMPTZ DEFAULT NOW()
         )
     """))
+    await db.commit()
 
-    # Add UNIQUE constraint if table existed without it
+    # Step 1: Remove duplicate rows — keep only the lowest id per phrase
+    await db.execute(text("""
+        DELETE FROM ai_skip_phrases a
+        USING ai_skip_phrases b
+        WHERE a.id > b.id AND a.phrase = b.phrase
+    """))
+    await db.commit()
+
+    # Step 2: Add UNIQUE constraint (safe now that duplicates are gone)
     await db.execute(text("""
         DO $$ BEGIN
             ALTER TABLE ai_skip_phrases ADD CONSTRAINT ai_skip_phrases_phrase_unique UNIQUE (phrase);
         EXCEPTION WHEN duplicate_table OR duplicate_object THEN NULL;
         END $$;
     """))
-
-    # Remove duplicate rows — keep the one with lowest id
-    await db.execute(text("""
-        DELETE FROM ai_skip_phrases a
-        USING ai_skip_phrases b
-        WHERE a.id > b.id AND a.phrase = b.phrase
-    """))
-
-    # Seed defaults (only if phrases column is unique — safe now)
-    await db.execute(text("""
-        INSERT INTO ai_skip_phrases (phrase, description, match_type) VALUES
-        ('Halo! Ada yang bisa kami bantu?', 'Template sambutan otomatis', 'exact'),
-        ('Terima kasih sudah menghubungi kami', 'Template penutup otomatis', 'contains'),
-        ('Kami akan segera menghubungi Anda', 'Template konfirmasi auto-reply', 'contains'),
-        ('Silakan tunggu, agen kami akan segera membantu', 'Template antrian agen', 'contains'),
-        ('Hai! Selamat datang di Kayana Green Hills', 'Template sambutan KGH', 'contains'),
-        ('Terima kasih atas minat Anda', 'Template respons awal', 'contains')
-        ON CONFLICT (phrase) DO NOTHING
-    """))
-
     await db.commit()
+
+    # Step 3: Seed defaults only if table is empty
+    count_result = await db.execute(text("SELECT COUNT(*) FROM ai_skip_phrases"))
+    count = count_result.scalar()
+    if count == 0:
+        await db.execute(text("""
+            INSERT INTO ai_skip_phrases (phrase, description, match_type) VALUES
+            ('Halo! Ada yang bisa kami bantu?', 'Template sambutan otomatis', 'exact'),
+            ('Terima kasih sudah menghubungi kami', 'Template penutup otomatis', 'contains'),
+            ('Kami akan segera menghubungi Anda', 'Template konfirmasi auto-reply', 'contains'),
+            ('Silakan tunggu, agen kami akan segera membantu', 'Template antrian agen', 'contains'),
+            ('Hai! Selamat datang di Kayana Green Hills', 'Template sambutan KGH', 'contains'),
+            ('Terima kasih atas minat Anda', 'Template respons awal', 'contains')
+            ON CONFLICT (phrase) DO NOTHING
+        """))
+        await db.commit()
 
 
 # ─── GET all skip phrases ──────────────────────────────────
